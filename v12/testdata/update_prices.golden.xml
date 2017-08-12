@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE BMECAT SYSTEM "bmecat_new_catalog.dtd">
+<BMECAT xmlns="http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog" version="1.2" xml:lang="de">
+  <HEADER>
+    <GENERATOR_INFO>BMEcat Generator</GENERATOR_INFO>
+    <CATALOG>
+      <LANGUAGE>de</LANGUAGE>
+      <CATALOG_ID>CAT1</CATALOG_ID>
+      <CATALOG_VERSION>1.0.0</CATALOG_VERSION>
+      <CATALOG_NAME>Katalogbezeichnung</CATALOG_NAME>
+      <DATETIME type="generation_date">
+        <DATE>2000-10-24</DATE>
+        <TIME>20:38:00</TIME>
+        <TIMEZONE>+0000</TIMEZONE>
+      </DATETIME>
+      <TERRITORY>DE</TERRITORY>
+      <TERRITORY>AT</TERRITORY>
+      <CURRENCY>EUR</CURRENCY>
+      <MIME_ROOT>https://example.com/images</MIME_ROOT>
+      <PRICE_FLAG type="incl_packing">true</PRICE_FLAG>
+    </CATALOG>
+    <BUYER>
+      <BUYER_ID type="buyer">BUYCO</BUYER_ID>
+      <BUYER_NAME>BuyCo Inc.</BUYER_NAME>
+    </BUYER>
+    <AGREEMENT>
+      <AGREEMENT_ID>23/97</AGREEMENT_ID>
+      <DATETIME type="agreement_start_date">
+        <DATE>1999-03-17</DATE>
+        <TIME>00:00:00</TIME>
+        <TIMEZONE>+0000</TIMEZONE>
+      </DATETIME>
+      <DATETIME type="agreement_start_date">
+        <DATE>2002-05-31</DATE>
+        <TIME>00:00:00</TIME>
+        <TIMEZONE>+0000</TIMEZONE>
+      </DATETIME>
+    </AGREEMENT>
+    <SUPPLIER>
+      <SUPPLIER_ID type="supplier">SUPPLYCO</SUPPLIER_ID>
+      <SUPPLIER_NAME>SupplyCo Ltd.</SUPPLIER_NAME>
+      <ADDRESS type="supplier">
+        <CITY>London</CITY>
+      </ADDRESS>
+      <MIME_INFO>
+        <MIME>
+          <MIME_TYPE>image/jpeg</MIME_TYPE>
+          <MIME_SOURCE>supplier_logo.jpg</MIME_SOURCE>
+          <MIME_PURPOSE>logo</MIME_PURPOSE>
+        </MIME>
+      </MIME_INFO>
+    </SUPPLIER>
+    <USER_DEFINED_EXTENSIONS>
+      <UDX.SYSTEM.CUSTOM_FIELD1>A</UDX.SYSTEM.CUSTOM_FIELD1>
+      <UDX.SYSTEM.CUSTOM_FIELD3>C</UDX.SYSTEM.CUSTOM_FIELD3>
+    </USER_DEFINED_EXTENSIONS>
+  </HEADER>
+  <T_UPDATE_PRICES>
+    <ARTICLE>
+      <SUPPLIER_AID>1000</SUPPLIER_AID>
+      <ARTICLE_PRICE_DETAILS>
+        <DATETIME type="valid_start_date">
+          <DATE>2001-01-01</DATE>
+          <TIME>00:00:00</TIME>
+          <TIMEZONE>+0000</TIMEZONE>
+        </DATETIME>
+        <DATETIME type="valid_end_date">
+          <DATE>2001-07-31</DATE>
+          <TIME>00:00:00</TIME>
+          <TIMEZONE>+0000</TIMEZONE>
+        </DATETIME>
+        <ARTICLE_PRICE price_type="net_customer">
+          <PRICE_AMOUNT>1499.5</PRICE_AMOUNT>
+          <PRICE_CURRENCY>EUR</PRICE_CURRENCY>
+          <TAX>0.19</TAX>
+          <PRICE_FACTOR>1</PRICE_FACTOR>
+          <LOWER_BOUND>1</LOWER_BOUND>
+          <TERRITORY>DE</TERRITORY>
+          <TERRITORY>AT</TERRITORY>
+        </ARTICLE_PRICE>
+        <ARTICLE_PRICE price_type="net_customer">
+          <PRICE_AMOUNT>1300.9</PRICE_AMOUNT>
+          <PRICE_CURRENCY>EUR</PRICE_CURRENCY>
+          <TAX>0.19</TAX>
+          <PRICE_FACTOR>1</PRICE_FACTOR>
+          <LOWER_BOUND>100</LOWER_BOUND>
+          <TERRITORY>DE</TERRITORY>
+          <TERRITORY>AT</TERRITORY>
+        </ARTICLE_PRICE>
+      </ARTICLE_PRICE_DETAILS>
+    </ARTICLE>
+  </T_UPDATE_PRICES>
+</BMECAT>
