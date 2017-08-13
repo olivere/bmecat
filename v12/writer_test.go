@@ -205,6 +205,7 @@ func TestWriteUpdateProducts(t *testing.T) {
 	w.Language = "de"
 	w.Transaction = v12.UpdateProducts
 	w.Header = testHeader
+	w.PreviousVersion = 13
 	articles := []*v12.Article{
 		&v12.Article{
 			Mode:        "update",
@@ -330,6 +331,7 @@ func TestWriteUpdatePrices(t *testing.T) {
 	w.Language = "de"
 	w.Transaction = v12.UpdatePrices
 	w.Header = testHeader
+	w.PreviousVersion = 42
 	articles := []*v12.Article{
 		&v12.Article{
 			SupplierAID: "1000",

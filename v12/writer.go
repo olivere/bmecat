@@ -44,6 +44,9 @@ type Writer struct {
 	Transaction Transaction
 	// Header of the catalog.
 	Header *Header
+	// PreviousVersion of the catalog. It is required for BMEcat "T_UPDATE_PRODUCTS"
+	// and "T_UPDATE_PRICES".
+	PreviousVersion int
 }
 
 // NewWriter creates a new Writer. It expects an underlying io.Writer
@@ -71,6 +74,26 @@ func WithProgress(f WriteProgress) WriterOption {
 // You can tell the Writer to report progress with the WithProgress option.
 type WriteProgress func(written int)
 
+// txStartElement returns the XML StartElement for the BMEcat transaction,
+// e.g. "T_NEW_CATALOG".
+func (w *Writer) txStartElement() xml.StartElement {
+	tx := w.Transaction.String()
+	attr := []xml.Attr{}
+	switch w.Transaction {
+	case UpdateProducts:
+		attr = append(attr, xml.Attr{Name: xml.Name{Local: "prev_version"}, Value: fmt.Sprint(w.PreviousVersion)})
+	case UpdatePrices:
+		attr = append(attr, xml.Attr{Name: xml.Name{Local: "prev_version"}, Value: fmt.Sprint(w.PreviousVersion)})
+	}
+	return xml.StartElement{Name: xml.Name{Local: tx}, Attr: attr}
+}
+
+// txEndElement returns the XML EndElement for the BMEcat transaction,
+// e.g. "T_NEW_CATALOG".
+func (w *Writer) txEndElement() xml.EndElement {
+	return xml.EndElement{Name: xml.Name{Local: w.Transaction.String()}}
+}
+
 // Do writes the BMEcat file.
 //
 // You must pass a context, which can be canceled to stop writing.
@@ -92,7 +115,7 @@ func (w *Writer) Do(ctx context.Context, articles <-chan *Article) error {
 		}
 	}
 	tx := w.Transaction.String()
-	if err := w.enc.EncodeToken(xml.StartElement{Name: xml.Name{Local: tx}}); err != nil {
+	if err := w.enc.EncodeToken(w.txStartElement()); err != nil {
 		return errors.Wrapf(err, "bmecat/v12: unable to write opening %s", tx)
 	}
 
@@ -122,7 +145,7 @@ func (w *Writer) Do(ctx context.Context, articles <-chan *Article) error {
 	}
 	// ARTICLE_TO_CATALOGROUP_MAP
 
-	if err := w.enc.EncodeToken(xml.EndElement{Name: xml.Name{Local: tx}}); err != nil {
+	if err := w.enc.EncodeToken(w.txEndElement()); err != nil {
 		return errors.Wrapf(err, "bmecat/v12: unable to write closing %s", tx)
 	}
 	if err := w.writeLeadOut(); err != nil {
