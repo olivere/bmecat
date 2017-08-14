@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/olivere/nullable"
-
 	"github.com/olivere/bmecat/v12"
 )
 
@@ -134,25 +132,25 @@ func TestWriteNewCatalog(t *testing.T) {
 			{
 				ID:       "2",
 				Name:     "Notebook",
-				ParentID: nullable.StringPtr("1"),
+				ParentID: "1",
 				Type:     "node",
 			},
 			{
 				ID:       "3",
 				Name:     "Desktop",
-				ParentID: nullable.StringPtr("1"),
+				ParentID: "1",
 				Type:     "node",
 			},
 			{
 				ID:       "4",
 				Name:     "PC",
-				ParentID: nullable.StringPtr("2"),
+				ParentID: "2",
 				Type:     "leaf",
 			},
 			{
 				ID:       "5",
 				Name:     "Mac",
-				ParentID: nullable.StringPtr("2"),
+				ParentID: "2",
 				Type:     "leaf",
 			},
 		},
@@ -298,25 +296,25 @@ func TestWriteUpdateProducts(t *testing.T) {
 			{
 				ID:       "2",
 				Name:     "Notebook",
-				ParentID: nullable.StringPtr("1"),
+				ParentID: "1",
 				Type:     "node",
 			},
 			{
 				ID:       "3",
 				Name:     "Desktop",
-				ParentID: nullable.StringPtr("1"),
+				ParentID: "1",
 				Type:     "node",
 			},
 			{
 				ID:       "4",
 				Name:     "PC",
-				ParentID: nullable.StringPtr("2"),
+				ParentID: "2",
 				Type:     "leaf",
 			},
 			{
 				ID:       "5",
 				Name:     "Mac",
-				ParentID: nullable.StringPtr("2"),
+				ParentID: "2",
 				Type:     "leaf",
 			},
 		},

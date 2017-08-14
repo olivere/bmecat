@@ -36,7 +36,7 @@ type ClassificationGroup struct {
 	Description string                       `xml:"CLASSIFICATION_GROUP_DESCR,omitempty"`
 	Synonyms    []ClassificationGroupSynonym `xml:"CLASSIFICATION_GROUP_SYNONYMS,omitempty"`
 	// CLASSIFICATION_GROUP_FEATURE_TEMPLATES
-	ParentID *string `xml:"CLASSIFICATION_GROUP_PARENT_ID,omitempty"`
+	ParentID string `xml:"CLASSIFICATION_GROUP_PARENT_ID,omitempty"`
 }
 
 type ClassificationGroupSynonym struct {
