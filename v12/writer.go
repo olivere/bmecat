@@ -29,31 +29,35 @@ func (t Transaction) String() string {
 	}
 }
 
+// CatalogWriter specifies the contract that users of Writer have to
+// implement to allow writing a BMEcat file.
+type CatalogWriter interface {
+	Transaction() Transaction
+	Language() string
+	PreviousVersion() int
+	Header() *Header
+	ClassificationSystem() *ClassificationSystem
+	Articles() <-chan *Article
+}
+
 // Writer allows writing BMEcat 1.2 catalog files.
 type Writer struct {
 	w        io.Writer
 	progress WriteProgress
 	enc      *xml.Encoder
 
-	// Indent setting for the writer.
-	Indent string
-	// Language that is used for the xml:lang attribute.
-	Language string
+	// indent setting for the writer.
+	indent string
 	// Transaction specifies the mode of the catalog, e.g. "T_NEW_CATALOG" (default),
 	// "T_UPDATE_PRODUCTS", or "T_UPDATE_PRICES".
-	Transaction Transaction
-	// Header of the catalog.
-	Header *Header
-	// PreviousVersion of the catalog. It is required for BMEcat "T_UPDATE_PRODUCTS"
-	// and "T_UPDATE_PRICES".
-	PreviousVersion int
+	transaction Transaction
 }
 
 // NewWriter creates a new Writer. It expects an underlying io.Writer
 // which essentially gets the XML content. You can also pass additional
 // options like WithProgress.
 func NewWriter(w io.Writer, options ...WriterOption) *Writer {
-	writer := &Writer{w: w, Transaction: NewCatalog}
+	writer := &Writer{w: w, indent: "  ", transaction: NewCatalog}
 	for _, o := range options {
 		o(writer)
 	}
@@ -62,6 +66,13 @@ func NewWriter(w io.Writer, options ...WriterOption) *Writer {
 
 // WriterOption is the signature of options to pass into a NewWriter.
 type WriterOption func(*Writer)
+
+// WithIndent sets the indentation for writing the XML file. It is set to two spaces by default.
+func WithIndent(indent string) WriterOption {
+	return func(w *Writer) {
+		w.indent = indent
+	}
+}
 
 // WithProgress reports the current number of articles as they are written.
 func WithProgress(f WriteProgress) WriterOption {
@@ -76,22 +87,22 @@ type WriteProgress func(written int)
 
 // txStartElement returns the XML StartElement for the BMEcat transaction,
 // e.g. "T_NEW_CATALOG".
-func (w *Writer) txStartElement() xml.StartElement {
-	tx := w.Transaction.String()
+func (w *Writer) txStartElement(writer CatalogWriter) xml.StartElement {
+	tx := writer.Transaction().String()
 	attr := []xml.Attr{}
-	switch w.Transaction {
+	switch writer.Transaction() {
 	case UpdateProducts:
-		attr = append(attr, xml.Attr{Name: xml.Name{Local: "prev_version"}, Value: fmt.Sprint(w.PreviousVersion)})
+		attr = append(attr, xml.Attr{Name: xml.Name{Local: "prev_version"}, Value: fmt.Sprint(writer.PreviousVersion())})
 	case UpdatePrices:
-		attr = append(attr, xml.Attr{Name: xml.Name{Local: "prev_version"}, Value: fmt.Sprint(w.PreviousVersion)})
+		attr = append(attr, xml.Attr{Name: xml.Name{Local: "prev_version"}, Value: fmt.Sprint(writer.PreviousVersion())})
 	}
 	return xml.StartElement{Name: xml.Name{Local: tx}, Attr: attr}
 }
 
 // txEndElement returns the XML EndElement for the BMEcat transaction,
 // e.g. "T_NEW_CATALOG".
-func (w *Writer) txEndElement() xml.EndElement {
-	return xml.EndElement{Name: xml.Name{Local: w.Transaction.String()}}
+func (w *Writer) txEndElement(writer CatalogWriter) xml.EndElement {
+	return xml.EndElement{Name: xml.Name{Local: writer.Transaction().String()}}
 }
 
 // Do writes the BMEcat file.
@@ -101,51 +112,44 @@ func (w *Writer) txEndElement() xml.EndElement {
 // You must also pass a channel of articles, which Do loops over.
 // If the articles channel is closed, Do will write the rest of
 // the BMEcat file, and then return.
-func (w *Writer) Do(ctx context.Context, articles <-chan *Article) error {
+func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 	w.enc = xml.NewEncoder(w.w)
-	if w.Indent != "" {
-		w.enc.Indent("", w.Indent)
+	if w.indent != "" {
+		w.enc.Indent("", w.indent)
 	}
-	if err := w.writeLeadIn(); err != nil {
+	if err := w.writeLeadIn(writer); err != nil {
 		return errors.Wrap(err, "bmecat/v12: unable to write lead in")
 	}
-	if w.Header != nil {
-		if err := w.enc.Encode(w.Header); err != nil {
+	header := writer.Header()
+	if header != nil {
+		if err := w.enc.Encode(header); err != nil {
 			return errors.Wrap(err, "bmecat/v12: unable to write Header")
 		}
 	}
-	tx := w.Transaction.String()
-	if err := w.enc.EncodeToken(w.txStartElement()); err != nil {
+	tx := writer.Transaction().String()
+	if err := w.enc.EncodeToken(w.txStartElement(writer)); err != nil {
 		return errors.Wrapf(err, "bmecat/v12: unable to write opening %s", tx)
 	}
 
 	// FEATURE_SYSTEM
+
 	// CLASSIFICATION_SYSTEM
-	// CATALOG_GROUP_SYSTEM
-	// ARTICLE
-	var stop bool
-	var written uint32
-	for !stop {
-		select {
-		case a, ok := <-articles:
-			if !ok {
-				stop = true
-				break
-			}
-			if err := w.writeArticle(a); err != nil {
-				return errors.Wrapf(err, "bmecat/v12: unable to write article %q: %v", a.SupplierAID)
-			}
-			current := atomic.AddUint32(&written, 1)
-			if w.progress != nil {
-				w.progress(int(current))
-			}
-		case <-ctx.Done():
-			return ctx.Err()
+	if system := writer.ClassificationSystem(); system != nil {
+		if err := w.enc.Encode(system); err != nil {
+			return errors.Wrap(err, "bmecat/v12: unable to write CLASSIFICATION_SYSTEM")
 		}
 	}
+
+	// CATALOG_GROUP_SYSTEM
+
+	// ARTICLE
+	if err := w.writeArticles(ctx, writer); err != nil {
+		return errors.Wrapf(err, "bmecat/v12: unable to write ARTICLE")
+	}
+
 	// ARTICLE_TO_CATALOGROUP_MAP
 
-	if err := w.enc.EncodeToken(w.txEndElement()); err != nil {
+	if err := w.enc.EncodeToken(w.txEndElement(writer)); err != nil {
 		return errors.Wrapf(err, "bmecat/v12: unable to write closing %s", tx)
 	}
 	if err := w.writeLeadOut(); err != nil {
@@ -154,7 +158,7 @@ func (w *Writer) Do(ctx context.Context, articles <-chan *Article) error {
 	return w.enc.Flush()
 }
 
-func (w *Writer) writeLeadIn() error {
+func (w *Writer) writeLeadIn(writer CatalogWriter) error {
 	_, err := fmt.Fprint(w.w, xml.Header)
 	if err != nil {
 		return err
@@ -163,13 +167,13 @@ func (w *Writer) writeLeadIn() error {
 	if err != nil {
 		return err
 	}
-	// <BMECAT version="1.2" xml:lang="de" xmlns="http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog">`, w.Language)
+	// <BMECAT version="1.2" xml:lang="de" xmlns="http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog">`, writer.Language())
 	attr := []xml.Attr{
 		xml.Attr{Name: xml.Name{Local: "xmlns"}, Value: "http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog"},
 		xml.Attr{Name: xml.Name{Local: "version"}, Value: "1.2"},
 	}
-	if w.Language != "" {
-		attr = append(attr, xml.Attr{Name: xml.Name{Local: "xml:lang"}, Value: w.Language})
+	if language := writer.Language(); language != "" {
+		attr = append(attr, xml.Attr{Name: xml.Name{Local: "xml:lang"}, Value: language})
 	}
 	t := xml.StartElement{
 		Name: xml.Name{Local: "BMECAT"},
@@ -180,13 +184,36 @@ func (w *Writer) writeLeadIn() error {
 
 func (w *Writer) writeLeadOut() error {
 	return w.enc.EncodeToken(xml.EndElement{Name: xml.Name{Local: "BMECAT"}})
-	/*
-		_, err := fmt.Fprintln(w.w, `</BMECAT>`)
-		if err != nil {
-			return err
-		}
+}
+
+func (w *Writer) writeArticles(ctx context.Context, writer CatalogWriter) error {
+	articlesCh := writer.Articles()
+	if articlesCh == nil {
 		return nil
-	*/
+	}
+
+	var stop bool
+	var written uint32
+	for !stop {
+		select {
+		case a, ok := <-articlesCh:
+			if !ok {
+				stop = true
+				break
+			}
+			if err := w.writeArticle(a); err != nil {
+				return errors.Wrapf(err, "unable to write SUPPLIER_AID %q", a.SupplierAID)
+			}
+			current := atomic.AddUint32(&written, 1)
+			if w.progress != nil {
+				w.progress(int(current))
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	return nil
 }
 
 func (w *Writer) writeArticle(a *Article) error {
@@ -197,3 +224,57 @@ func (w *Writer) writeArticle(a *Article) error {
 	}
 	return nil
 }
+
+/*
+func (w *Writer) writeClassificationGroups(ctx context.Context, writer CatalogWriter) error {
+	categoriesCh := writer.ClassificationGroups()
+	if categoriesCh == nil {
+		return nil
+	}
+
+	if err := w.enc.EncodeToken(xml.StartElement{Name: xml.Name{Local: "CLASSIFICATION_SYSTEM"}}); err != nil {
+		return err
+	}
+
+	// CLASSIFICATION_SYSTEM_NAME (req)
+	err := w.enc.EncodeElement(SupplierClassification, xml.StartElement{Name: xml.Name{Local: "CLASSIFICATION_SYSTEM_NAME"}})
+	if err != nil {
+		return err
+	}
+	// CLASSIFICATION_SYSTEM_FULLNAME
+	err = w.enc.EncodeElement(w.classificationSystemName(), xml.StartElement{Name: xml.Name{Local: "CLASSIFICATION_SYSTEM_FULLNAME"}})
+	if err != nil {
+		return err
+	}
+
+	// CLASSIFICATION_SYSTEM_VERSION
+	// CLASSIFICATION_SYSTEM_DESCR
+	// CLASSIFICATION_SYSTEM_LEVELS
+	// CLASSIFICATION_SYSTEM_LEVEL_NAMES
+	// ALLOWED_VALUES
+	// UNITS
+	// CLASSIFICATION_SYSTEM_FEATURE_TEMPLATES
+	// CLASSIFICATION_GROUPS (req)
+	var stop bool
+	for !stop {
+		select {
+		case cg, ok := <-categoriesCh:
+			if !ok {
+				stop = true
+				break
+			}
+			if err := w.enc.Encode(cg); err != nil {
+				return errors.Wrapf(err, "unable to encode CLASSIFICATION_GROUP %v", cg.ID)
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	// /CLASSIFICATION_SYSTEM_NAME (req)
+	if err := w.enc.EncodeToken(xml.EndElement{Name: xml.Name{Local: "CLASSIFICATION_SYSTEM"}}); err != nil {
+		return err
+	}
+	return nil
+}
+*/

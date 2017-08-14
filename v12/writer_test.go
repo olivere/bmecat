@@ -3,10 +3,13 @@ package v12_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/olivere/nullable"
 
 	"github.com/olivere/bmecat/v12"
 )
@@ -68,23 +71,85 @@ var (
 	}
 )
 
-func makeArticleChannel(articles ...*v12.Article) <-chan *v12.Article {
-	outCh := make(chan *v12.Article)
+type catalogWriter struct {
+	tx                   v12.Transaction
+	language             string
+	prevVersion          int
+	header               *v12.Header
+	classificationSystem *v12.ClassificationSystem
+	articles             []*v12.Article
+}
+
+func (w catalogWriter) Transaction() v12.Transaction {
+	return w.tx
+}
+
+func (w catalogWriter) Language() string {
+	return w.language
+}
+
+func (w catalogWriter) PreviousVersion() int {
+	return w.prevVersion
+}
+
+func (w catalogWriter) Header() *v12.Header {
+	return w.header
+}
+
+func (w catalogWriter) ClassificationSystem() *v12.ClassificationSystem {
+	return w.classificationSystem
+}
+
+func (w catalogWriter) Articles() <-chan *v12.Article {
+	if len(w.articles) == 0 {
+		return nil
+	}
+	ch := make(chan *v12.Article)
 	go func() {
-		defer close(outCh)
-		for _, a := range articles {
-			outCh <- a
+		defer close(ch)
+		for _, a := range w.articles {
+			ch <- a
 		}
 	}()
-	return outCh
+	return ch
 }
 
 func TestWriteNewCatalog(t *testing.T) {
-	var buf bytes.Buffer
-	w := v12.NewWriter(&buf)
-	w.Indent = "  "
-	w.Language = "de"
-	w.Header = testHeader
+	classSys := &v12.ClassificationSystem{
+		Name:     "udf_Supplier-1.0",
+		FullName: testHeader.Supplier.Name,
+		Groups: []*v12.ClassificationGroup{
+			{
+				ID:   "1",
+				Name: "Hardware",
+				Type: "node",
+			},
+			{
+				ID:       "2",
+				Name:     "Notebook",
+				ParentID: nullable.StringPtr("1"),
+				Type:     "node",
+			},
+			{
+				ID:       "3",
+				Name:     "Desktop",
+				ParentID: nullable.StringPtr("1"),
+				Type:     "node",
+			},
+			{
+				ID:       "4",
+				Name:     "PC",
+				ParentID: nullable.StringPtr("2"),
+				Type:     "leaf",
+			},
+			{
+				ID:       "5",
+				Name:     "Mac",
+				ParentID: nullable.StringPtr("2"),
+				Type:     "leaf",
+			},
+		},
+	}
 	articles := []*v12.Article{
 		&v12.Article{
 			SupplierAID: "1000",
@@ -122,6 +187,10 @@ func TestWriteNewCatalog(t *testing.T) {
 							Unit:   "VLT",
 						},
 					},
+				},
+				&v12.ArticleFeatures{
+					FeatureSystemName: "udf_Supplier-1.0",
+					FeatureGroupID:    "5",
 				},
 			},
 			OrderDetails: &v12.ArticleOrderDetails{
@@ -180,9 +249,19 @@ func TestWriteNewCatalog(t *testing.T) {
 			},
 		},
 	}
-	articlesCh := makeArticleChannel(articles...)
+	cw := catalogWriter{
+		tx:                   v12.NewCatalog,
+		language:             "de",
+		prevVersion:          0,
+		header:               testHeader,
+		classificationSystem: classSys,
+		articles:             articles,
+	}
+
+	var buf bytes.Buffer
+	w := v12.NewWriter(&buf, v12.WithIndent("  "))
 	ctx := context.Background()
-	if err := w.Do(ctx, articlesCh); err != nil {
+	if err := w.Do(ctx, cw); err != nil {
 		t.Fatal(err)
 	}
 
@@ -193,19 +272,48 @@ func TestWriteNewCatalog(t *testing.T) {
 	}
 	want := strings.TrimSpace(string(data))
 	if want != have {
+		// fmt.Println(have)
 		diffStrings(t, want, have)
 		t.Fail()
 	}
 }
 
 func TestWriteUpdateProducts(t *testing.T) {
-	var buf bytes.Buffer
-	w := v12.NewWriter(&buf)
-	w.Indent = "  "
-	w.Language = "de"
-	w.Transaction = v12.UpdateProducts
-	w.Header = testHeader
-	w.PreviousVersion = 13
+	classSys := &v12.ClassificationSystem{
+		Name:     "udf_Supplier-1.0",
+		FullName: testHeader.Supplier.Name,
+		Groups: []*v12.ClassificationGroup{
+			{
+				ID:   "1",
+				Name: "Hardware",
+				Type: "node",
+			},
+			{
+				ID:       "2",
+				Name:     "Notebook",
+				ParentID: nullable.StringPtr("1"),
+				Type:     "node",
+			},
+			{
+				ID:       "3",
+				Name:     "Desktop",
+				ParentID: nullable.StringPtr("1"),
+				Type:     "node",
+			},
+			{
+				ID:       "4",
+				Name:     "PC",
+				ParentID: nullable.StringPtr("2"),
+				Type:     "leaf",
+			},
+			{
+				ID:       "5",
+				Name:     "Mac",
+				ParentID: nullable.StringPtr("2"),
+				Type:     "leaf",
+			},
+		},
+	}
 	articles := []*v12.Article{
 		&v12.Article{
 			Mode:        "update",
@@ -244,6 +352,10 @@ func TestWriteUpdateProducts(t *testing.T) {
 							Unit:   "VLT",
 						},
 					},
+				},
+				&v12.ArticleFeatures{
+					FeatureSystemName: "udf_Supplier-1.0",
+					FeatureGroupID:    "5",
 				},
 			},
 			OrderDetails: &v12.ArticleOrderDetails{
@@ -306,9 +418,20 @@ func TestWriteUpdateProducts(t *testing.T) {
 			SupplierAID: "2000",
 		},
 	}
-	articlesCh := makeArticleChannel(articles...)
+	cw := catalogWriter{
+		tx:                   v12.UpdateProducts,
+		language:             "de",
+		prevVersion:          13,
+		header:               testHeader,
+		classificationSystem: classSys,
+		articles:             articles,
+	}
+
+	var buf bytes.Buffer
+	w := v12.NewWriter(&buf, v12.WithIndent("  "))
+
 	ctx := context.Background()
-	if err := w.Do(ctx, articlesCh); err != nil {
+	if err := w.Do(ctx, cw); err != nil {
 		t.Fatal(err)
 	}
 
@@ -319,21 +442,15 @@ func TestWriteUpdateProducts(t *testing.T) {
 	}
 	want := strings.TrimSpace(string(data))
 	if want != have {
-		diffStrings(t, want, have)
+		fmt.Println(have)
+		// diffStrings(t, want, have)
 		t.Fail()
 	}
 }
 
 func TestWriteUpdatePrices(t *testing.T) {
-	var buf bytes.Buffer
-	w := v12.NewWriter(&buf)
-	w.Indent = "  "
-	w.Language = "de"
-	w.Transaction = v12.UpdatePrices
-	w.Header = testHeader
-	w.PreviousVersion = 42
 	articles := []*v12.Article{
-		&v12.Article{
+		{
 			SupplierAID: "1000",
 			PriceDetails: []*v12.ArticlePriceDetails{
 				&v12.ArticlePriceDetails{
@@ -365,9 +482,20 @@ func TestWriteUpdatePrices(t *testing.T) {
 			},
 		},
 	}
-	articlesCh := makeArticleChannel(articles...)
+	cw := catalogWriter{
+		tx:                   v12.UpdatePrices,
+		language:             "de",
+		prevVersion:          42,
+		header:               testHeader,
+		classificationSystem: nil,
+		articles:             articles,
+	}
+
+	var buf bytes.Buffer
+	w := v12.NewWriter(&buf, v12.WithIndent("  "))
+
 	ctx := context.Background()
-	if err := w.Do(ctx, articlesCh); err != nil {
+	if err := w.Do(ctx, cw); err != nil {
 		t.Fatal(err)
 	}
 
@@ -378,6 +506,7 @@ func TestWriteUpdatePrices(t *testing.T) {
 	}
 	want := strings.TrimSpace(string(data))
 	if want != have {
+		// fmt.Println(have)
 		diffStrings(t, want, have)
 		t.Fail()
 	}
