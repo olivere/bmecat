@@ -37,7 +37,7 @@ type CatalogWriter interface {
 	PreviousVersion() int
 	Header() *Header
 	ClassificationSystem() *ClassificationSystem
-	Articles() <-chan *Article
+	Articles(context.Context) (<-chan *Article, <-chan error)
 }
 
 // Writer allows writing BMEcat 1.2 catalog files.
@@ -187,7 +187,7 @@ func (w *Writer) writeLeadOut() error {
 }
 
 func (w *Writer) writeArticles(ctx context.Context, writer CatalogWriter) error {
-	articlesCh := writer.Articles()
+	articlesCh, errCh := writer.Articles(ctx)
 	if articlesCh == nil {
 		return nil
 	}
@@ -208,6 +208,8 @@ func (w *Writer) writeArticles(ctx context.Context, writer CatalogWriter) error 
 			if w.progress != nil {
 				w.progress(int(current))
 			}
+		case err := <-errCh:
+			return err
 		case <-ctx.Done():
 			return ctx.Err()
 		}

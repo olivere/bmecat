@@ -100,18 +100,25 @@ func (w catalogWriter) ClassificationSystem() *v12.ClassificationSystem {
 	return w.classificationSystem
 }
 
-func (w catalogWriter) Articles() <-chan *v12.Article {
+func (w catalogWriter) Articles(ctx context.Context) (<-chan *v12.Article, <-chan error) {
 	if len(w.articles) == 0 {
-		return nil
+		return nil, nil
 	}
-	ch := make(chan *v12.Article)
+	outCh := make(chan *v12.Article)
+	errCh := make(chan error, 1)
 	go func() {
-		defer close(ch)
+		defer close(outCh)
+		defer close(errCh)
 		for _, a := range w.articles {
-			ch <- a
+			outCh <- a
+			select {
+			default:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
-	return ch
+	return outCh, errCh
 }
 
 func TestWriteNewCatalog(t *testing.T) {
