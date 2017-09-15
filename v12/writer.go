@@ -85,6 +85,18 @@ func WithProgress(f WriteProgress) WriterOption {
 // You can tell the Writer to report progress with the WithProgress option.
 type WriteProgress func(written int)
 
+// xmlNamespace returns the XML namespace to use for the output.
+func (w *Writer) xmlNamespace(writer CatalogWriter) string {
+	switch writer.Transaction() {
+	case UpdateProducts:
+		return "http://www.bmecat.org/bmecat/1.2/bmecat_update_products"
+	case UpdatePrices:
+		return "http://www.bmecat.org/bmecat/1.2/bmecat_update_prices"
+	default:
+		return "http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog"
+	}
+}
+
 // txStartElement returns the XML StartElement for the BMEcat transaction,
 // e.g. "T_NEW_CATALOG".
 func (w *Writer) txStartElement(writer CatalogWriter) xml.StartElement {
@@ -173,7 +185,7 @@ func (w *Writer) writeLeadIn(writer CatalogWriter) error {
 	}
 	// <BMECAT version="1.2" xmlns="http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog">`, writer.Language())
 	attr := []xml.Attr{
-		xml.Attr{Name: xml.Name{Local: "xmlns"}, Value: "http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog"},
+		xml.Attr{Name: xml.Name{Local: "xmlns"}, Value: w.xmlNamespace(writer)},
 		xml.Attr{Name: xml.Name{Local: "version"}, Value: "1.2"},
 	}
 	/*
