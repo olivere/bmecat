@@ -16,7 +16,7 @@ type ClassificationSystem struct {
 	// ALLOWED_VALUES
 	// UNITS
 	// CLASSIFICATION_SYSTEM_FEATURE_TEMPLATES
-	Groups []*ClassificationGroup `xml:"CLASSIFICATION_GROUP,omitempty"`
+	Groups []*ClassificationGroup `xml:"CLASSIFICATION_GROUPS>CLASSIFICATION_GROUP,omitempty"`
 }
 
 type ClassificationSystemLevelName struct {
