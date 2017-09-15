@@ -131,23 +131,27 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 		return errors.Wrapf(err, "bmecat/v12: unable to write opening %s", tx)
 	}
 
-	// FEATURE_SYSTEM
+	if writer.Transaction() == NewCatalog {
+		// FEATURE_SYSTEM
 
-	// CLASSIFICATION_SYSTEM
-	if system := writer.ClassificationSystem(); system != nil {
-		if err := w.enc.Encode(system); err != nil {
-			return errors.Wrap(err, "bmecat/v12: unable to write CLASSIFICATION_SYSTEM")
+		// CLASSIFICATION_SYSTEM
+		if system := writer.ClassificationSystem(); system != nil {
+			if err := w.enc.Encode(system); err != nil {
+				return errors.Wrap(err, "bmecat/v12: unable to write CLASSIFICATION_SYSTEM")
+			}
 		}
-	}
 
-	// CATALOG_GROUP_SYSTEM
+		// CATALOG_GROUP_SYSTEM
+	}
 
 	// ARTICLE
 	if err := w.writeArticles(ctx, writer); err != nil {
 		return errors.Wrapf(err, "bmecat/v12: unable to write ARTICLE")
 	}
 
-	// ARTICLE_TO_CATALOGROUP_MAP
+	if writer.Transaction() != UpdatePrices {
+		// ARTICLE_TO_CATALOGROUP_MAP
+	}
 
 	if err := w.enc.EncodeToken(w.txEndElement(writer)); err != nil {
 		return errors.Wrapf(err, "bmecat/v12: unable to write closing %s", tx)
