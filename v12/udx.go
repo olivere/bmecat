@@ -27,6 +27,7 @@ type UserDefinedExtensionFields []*UserDefinedExtensionField
 // UserDefinedExtensionField represents a single UDX field.
 type UserDefinedExtensionField struct {
 	Name, Value string
+	Raw         bool // true to marshal Value as raw XML, i.e. not escape it
 }
 
 // MarshalXML encodes the contents of the UserDefinedExtensions struct.
@@ -34,9 +35,20 @@ func (x *UserDefinedExtensions) MarshalXML(e *xml.Encoder, start xml.StartElemen
 	e.EncodeToken(xml.StartElement{Name: xml.Name{Local: "USER_DEFINED_EXTENSIONS"}})
 	for _, field := range x.Fields {
 		local := fmt.Sprintf("UDX.%s", field.Name)
-		e.EncodeToken(xml.StartElement{Name: xml.Name{Local: local}})
-		e.EncodeToken(xml.CharData([]byte(field.Value)))
-		e.EncodeToken(xml.EndElement{Name: xml.Name{Local: local}})
+		if field.Raw {
+			// Directly inject the Raw field contents into the XML element
+			raw := struct {
+				Value string `xml:",innerxml"`
+			}{
+				Value: field.Value,
+			}
+			e.EncodeElement(raw, xml.StartElement{Name: xml.Name{Local: local}})
+
+		} else {
+			e.EncodeToken(xml.StartElement{Name: xml.Name{Local: local}})
+			e.EncodeToken(xml.CharData([]byte(field.Value)))
+			e.EncodeToken(xml.EndElement{Name: xml.Name{Local: local}})
+		}
 	}
 	e.EncodeToken(xml.EndElement{Name: xml.Name{Local: "USER_DEFINED_EXTENSIONS"}})
 	return nil
@@ -71,7 +83,16 @@ func (x *UserDefinedExtensions) UnmarshalXML(d *xml.Decoder, start xml.StartElem
 // Add an UDX field to the list.
 func (x *UserDefinedExtensionFields) Add(name, value string) {
 	if x != nil {
-		*x = append(*x, &UserDefinedExtensionField{Name: name, Value: value})
+		*x = append(*x, &UserDefinedExtensionField{Name: name, Value: value, Raw: false})
+	}
+}
+
+// AddRaw adds a UDX field with the raw value that is directly injected
+// into the XML document. The caller is responsible for ensuring the raw
+// value is valid XML.
+func (x *UserDefinedExtensionFields) AddRaw(name, value string) {
+	if x != nil {
+		*x = append(*x, &UserDefinedExtensionField{Name: name, Value: value, Raw: true})
 	}
 }
 

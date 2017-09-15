@@ -22,6 +22,23 @@ func TestMarshalUDX(t *testing.T) {
 	}
 }
 
+func TestMarshalRawUDX(t *testing.T) {
+	udx := &UserDefinedExtensions{}
+	udx.Fields.AddRaw("SYSTEM.CUSTOM_FIELD1", "<ID>A</ID><VALUE>Value</VALUE>")
+	udx.Fields.AddRaw("SYSTEM.CUSTOM_FIELD5", "E")
+	if want, have := 2, len(udx.Fields); want != have {
+		t.Fatalf("want len = %d, have: %d", want, have)
+	}
+	out, err := xml.Marshal(udx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `<USER_DEFINED_EXTENSIONS><UDX.SYSTEM.CUSTOM_FIELD1><ID>A</ID><VALUE>Value</VALUE></UDX.SYSTEM.CUSTOM_FIELD1><UDX.SYSTEM.CUSTOM_FIELD5>E</UDX.SYSTEM.CUSTOM_FIELD5></USER_DEFINED_EXTENSIONS>`
+	if want, have := expected, string(out); want != have {
+		t.Fatalf("want:\n%v\nhave:\n%v", want, have)
+	}
+}
+
 func TestUnmarshalUDX(t *testing.T) {
 	input := `<USER_DEFINED_EXTENSIONS><UDX.SYSTEM.CUSTOM_FIELD1>A</UDX.SYSTEM.CUSTOM_FIELD1><UDX.SYSTEM.CUSTOM_FIELD5>E</UDX.SYSTEM.CUSTOM_FIELD5></USER_DEFINED_EXTENSIONS>`
 	udx := &UserDefinedExtensions{}
