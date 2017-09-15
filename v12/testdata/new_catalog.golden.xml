@@ -4,9 +4,9 @@
   <HEADER>
     <GENERATOR_INFO>BMEcat Generator</GENERATOR_INFO>
     <CATALOG>
-      <LANGUAGE>de</LANGUAGE>
+      <LANGUAGE>deu</LANGUAGE>
       <CATALOG_ID>CAT1</CATALOG_ID>
-      <CATALOG_VERSION>1.0.0</CATALOG_VERSION>
+      <CATALOG_VERSION>1.0</CATALOG_VERSION>
       <CATALOG_NAME>Katalogbezeichnung</CATALOG_NAME>
       <DATETIME type="generation_date">
         <DATE>2000-10-24</DATE>

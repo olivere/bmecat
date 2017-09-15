@@ -16,9 +16,9 @@ var (
 	testHeader = &v12.Header{
 		GeneratorInfo: "BMEcat Generator",
 		Catalog: &v12.Catalog{
-			Language:    "de",
+			Language:    "deu",
 			ID:          "CAT1",
-			Version:     "1.0.0",
+			Version:     "1.0",
 			Name:        "Katalogbezeichnung",
 			GenDate:     v12.NewDateTime(v12.DateTimeGenerationDate, time.Date(2000, 10, 24, 20, 38, 00, 0, time.UTC)),
 			Territories: []string{"DE", "AT"},
