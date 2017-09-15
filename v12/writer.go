@@ -167,14 +167,16 @@ func (w *Writer) writeLeadIn(writer CatalogWriter) error {
 	if err != nil {
 		return err
 	}
-	// <BMECAT version="1.2" xml:lang="de" xmlns="http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog">`, writer.Language())
+	// <BMECAT version="1.2" xmlns="http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog">`, writer.Language())
 	attr := []xml.Attr{
 		xml.Attr{Name: xml.Name{Local: "xmlns"}, Value: "http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog"},
 		xml.Attr{Name: xml.Name{Local: "version"}, Value: "1.2"},
 	}
-	if language := writer.Language(); language != "" {
-		attr = append(attr, xml.Attr{Name: xml.Name{Local: "xml:lang"}, Value: language})
-	}
+	/*
+		if language := writer.Language(); language != "" {
+			attr = append(attr, xml.Attr{Name: xml.Name{Local: "xml:lang"}, Value: language})
+		}
+	*/
 	t := xml.StartElement{
 		Name: xml.Name{Local: "BMECAT"},
 		Attr: attr,
