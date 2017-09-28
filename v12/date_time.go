@@ -40,7 +40,7 @@ func NewDateTime(typ string, dt time.Time) *DateTime {
 	if dt.Location() == time.UTC {
 		out.TimeZoneString = "Z"
 	} else {
-		out.TimeZoneString = dt.Format("-0700")
+		out.TimeZoneString = dt.Format("-07:00")
 	}
 	return out
 }

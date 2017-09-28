@@ -40,7 +40,7 @@ func TestNewDateTime(t *testing.T) {
 				Type:           DateTimeValidStartDate,
 				DateString:     "2017-08-01",
 				TimeString:     "09:12:59",
-				TimeZoneString: "-0400",
+				TimeZoneString: "-04:00",
 			},
 		},
 	}
