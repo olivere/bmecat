@@ -11,7 +11,7 @@
       <DATETIME type="generation_date">
         <DATE>2000-10-24</DATE>
         <TIME>20:38:00</TIME>
-        <TIMEZONE>+0000</TIMEZONE>
+        <TIMEZONE>Z</TIMEZONE>
       </DATETIME>
       <TERRITORY>DE</TERRITORY>
       <TERRITORY>AT</TERRITORY>
@@ -28,12 +28,12 @@
       <DATETIME type="agreement_start_date">
         <DATE>1999-03-17</DATE>
         <TIME>00:00:00</TIME>
-        <TIMEZONE>+0000</TIMEZONE>
+        <TIMEZONE>Z</TIMEZONE>
       </DATETIME>
       <DATETIME type="agreement_start_date">
         <DATE>2002-05-31</DATE>
         <TIME>00:00:00</TIME>
-        <TIMEZONE>+0000</TIMEZONE>
+        <TIMEZONE>Z</TIMEZONE>
       </DATETIME>
     </AGREEMENT>
     <SUPPLIER>
@@ -128,12 +128,12 @@
         <DATETIME type="valid_start_date">
           <DATE>2001-01-01</DATE>
           <TIME>00:00:00</TIME>
-          <TIMEZONE>+0000</TIMEZONE>
+          <TIMEZONE>Z</TIMEZONE>
         </DATETIME>
         <DATETIME type="valid_end_date">
           <DATE>2001-07-31</DATE>
           <TIME>00:00:00</TIME>
-          <TIMEZONE>+0000</TIMEZONE>
+          <TIMEZONE>Z</TIMEZONE>
         </DATETIME>
         <ARTICLE_PRICE price_type="net_customer">
           <PRICE_AMOUNT>1499.5</PRICE_AMOUNT>

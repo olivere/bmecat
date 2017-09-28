@@ -29,7 +29,7 @@ func TestNewDateTime(t *testing.T) {
 				Type:           DateTimeGenerationDate,
 				DateString:     "2000-10-24",
 				TimeString:     "20:38:00",
-				TimeZoneString: "+0000",
+				TimeZoneString: "Z",
 			},
 		},
 		// #2

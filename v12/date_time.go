@@ -32,10 +32,15 @@ func NewDateTime(typ string, dt time.Time) *DateTime {
 	if dt.IsZero() {
 		return nil
 	}
-	return &DateTime{
-		Type:           typ,
-		DateString:     dt.Format("2006-01-02"),
-		TimeString:     dt.Format("15:04:05"),
-		TimeZoneString: dt.Format("-0700"),
+	out := &DateTime{
+		Type:       typ,
+		DateString: dt.Format("2006-01-02"),
+		TimeString: dt.Format("15:04:05"),
 	}
+	if dt.Location() == time.UTC {
+		out.TimeZoneString = "Z"
+	} else {
+		out.TimeZoneString = dt.Format("-0700")
+	}
+	return out
 }
