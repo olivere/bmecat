@@ -516,3 +516,133 @@ func TestWriteUpdatePrices(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
+	classSys := &v12.ClassificationSystem{
+		Name:     "udf_Supplier-1.0",
+		FullName: testHeader.Supplier.Name,
+		Groups:   []*v12.ClassificationGroup{}, // no groups
+	}
+	articles := []*v12.Article{
+		&v12.Article{
+			SupplierAID: "1000",
+			Details: &v12.ArticleDetails{
+				DescriptionShort: `Apple MacBook Pro 13"`,
+				DescriptionLong:  `Das Kraftpaket unter den Notebooks.`,
+				EAN:              "8712670911213",
+				SupplierAltAID:   "ALT-1000",
+				BuyerAIDs: []*v12.BuyerAID{
+					&v12.BuyerAID{Type: "KMF", Value: "78787"},
+				},
+				ManufacturerAID:  "MPN",
+				ManufacturerName: "Microsoft",
+				DeliveryTime:     1.5,
+				SpecialTreatmentClasses: []*v12.ArticleSpecialTreatmentClass{
+					&v12.ArticleSpecialTreatmentClass{
+						Type:  "GGVS",
+						Value: "1201",
+					},
+				},
+				Keywords: []string{"Notebook", "Hardware"},
+				Remarks:  "Noch heute bestellen!",
+				ArticleStatus: []*v12.ArticleStatus{
+					&v12.ArticleStatus{Type: v12.ArticleStatusCoreArticle, Value: "Kernsortiment"},
+				},
+			},
+			Features: []*v12.ArticleFeatures{
+				&v12.ArticleFeatures{
+					FeatureSystemName: "ECLASS-5.1",
+					FeatureGroupID:    "19010203",
+					Features: []*v12.Feature{
+						&v12.Feature{
+							Name:   "Netzspannung",
+							Values: []string{"110", "220"},
+							Unit:   "VLT",
+						},
+					},
+				},
+			},
+			OrderDetails: &v12.ArticleOrderDetails{
+				OrderUnit:     "BOX",
+				NoCuPerOu:     6.0,
+				ContentUnit:   "PCE",
+				PriceQuantity: 1,
+				QuantityMin:   1,
+			},
+			PriceDetails: []*v12.ArticlePriceDetails{
+				&v12.ArticlePriceDetails{
+					Dates: []*v12.DateTime{
+						v12.NewDateTime(v12.DateTimeValidStartDate, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)),
+						v12.NewDateTime(v12.DateTimeValidEndDate, time.Date(2001, 7, 31, 0, 0, 0, 0, time.UTC)),
+					},
+					Prices: []*v12.ArticlePrice{
+						&v12.ArticlePrice{
+							Type:       v12.ArticlePriceTypeNetCustomer,
+							Amount:     1499.50,
+							Currency:   "EUR",
+							Tax:        0.19,
+							Factor:     1.0,
+							LowerBound: 1,
+							Territory:  []string{"DE", "AT"},
+						},
+						&v12.ArticlePrice{
+							Type:       v12.ArticlePriceTypeNetCustomer,
+							Amount:     1300.90,
+							Currency:   "EUR",
+							Tax:        0.19,
+							Factor:     1.0,
+							LowerBound: 100,
+							Territory:  []string{"DE", "AT"},
+						},
+					},
+				},
+			},
+			// MIME_INFO
+			MimeInfo: &v12.MimeInfo{
+				Mimes: []*v12.Mime{
+					&v12.Mime{
+						Type:    "image/jpeg",
+						Source:  "55-K-31.jpg",
+						Descr:   "Frontansicht des Notebooks",
+						Purpose: v12.MimePurposeNormal,
+					},
+				},
+			},
+			// USER_DEFINED_EXTENSIONS
+			// ARTICLE_REFERENCE
+			References: []*v12.ArticleReference{
+				&v12.ArticleReference{
+					Type:    v12.ArticleReferenceTypeSimilar,
+					ArtIDTo: "2000",
+				},
+			},
+		},
+	}
+	cw := catalogWriter{
+		tx:                   v12.NewCatalog,
+		language:             "de",
+		prevVersion:          0,
+		header:               testHeader,
+		classificationSystem: classSys,
+		articles:             articles,
+	}
+
+	var buf bytes.Buffer
+	w := v12.NewWriter(&buf, v12.WithIndent("  "))
+	ctx := context.Background()
+	if err := w.Do(ctx, cw); err != nil {
+		t.Fatal(err)
+	}
+
+	have := strings.TrimSpace(buf.String())
+	data, err := ioutil.ReadFile("testdata/new_catalog_with_blank_classification_system.golden.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.TrimSpace(string(data))
+	if want != have {
+		// fmt.Println(have)
+		diffStrings(t, want, have)
+		t.Fail()
+	}
+}

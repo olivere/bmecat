@@ -10,14 +10,16 @@ const (
 	MimeTypeHTML  = "text/html"
 	MimeTypePlain = "text/plain"
 
-	MimePurposeThumbnail       = "thumbnail"
-	MimePurposeNormal          = "normal"
-	MimePurposeDetail          = "detail"
-	MimePurposeDataSheet       = "data_sheet"
-	MimePurposeLogo            = "logo"
-	MimePurposeOthers          = "others"
-	MimePurposeIcon            = "icon"
-	MimePurposeSafetyDataSheet = "safety_data_sheet"
+	MimePurposeThumbnail = "thumbnail"
+	MimePurposeNormal    = "normal"
+	MimePurposeDetail    = "detail"
+	MimePurposeDataSheet = "data_sheet"
+	MimePurposeLogo      = "logo"
+	MimePurposeOthers    = "others"
+	// Only available in BMEcat 2005 or later.
+	// MimePurposeIcon      = "icon"
+	// Only available in BMEcat 2005 or later.
+	// MimePurposeSafetyDataSheet = "safety_data_sheet"
 )
 
 // MimeInfo represents the MIME_INFO element from the BMEcat specification.
@@ -94,6 +96,7 @@ func (m *MimeInfo) LogoSource() string {
 	return ""
 }
 
+/*
 // IconSource returns the URL of the icon.
 // If no icon can be found, an empty string is returned.
 func (m *MimeInfo) IconSource() string {
@@ -104,7 +107,9 @@ func (m *MimeInfo) IconSource() string {
 	}
 	return ""
 }
+*/
 
+/*
 // SafetyDataSheetSource returns the URL of the safety data sheet.
 // If no such sheet is found, an empty string is returned.
 func (m *MimeInfo) SafetyDataSheetSource() string {
@@ -115,3 +120,4 @@ func (m *MimeInfo) SafetyDataSheetSource() string {
 	}
 	return ""
 }
+*/

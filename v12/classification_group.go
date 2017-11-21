@@ -19,6 +19,11 @@ type ClassificationSystem struct {
 	Groups []*ClassificationGroup `xml:"CLASSIFICATION_GROUPS>CLASSIFICATION_GROUP,omitempty"`
 }
 
+// IsBlank returns true if there are no groups in the classification system.
+func (cs *ClassificationSystem) IsBlank() bool {
+	return cs == nil || len(cs.Groups) == 0
+}
+
 type ClassificationSystemLevelName struct {
 	XMLName xml.Name `xml:"CLASSIFICATION_SYSTEM_LEVEL_NAME"`
 

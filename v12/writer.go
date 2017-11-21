@@ -148,8 +148,10 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 
 		// CLASSIFICATION_SYSTEM
 		if system := writer.ClassificationSystem(); system != nil {
-			if err := w.enc.Encode(system); err != nil {
-				return errors.Wrap(err, "bmecat/v12: unable to write CLASSIFICATION_SYSTEM")
+			if !system.IsBlank() {
+				if err := w.enc.Encode(system); err != nil {
+					return errors.Wrap(err, "bmecat/v12: unable to write CLASSIFICATION_SYSTEM")
+				}
 			}
 		}
 
@@ -244,57 +246,3 @@ func (w *Writer) writeArticle(a *Article) error {
 	}
 	return nil
 }
-
-/*
-func (w *Writer) writeClassificationGroups(ctx context.Context, writer CatalogWriter) error {
-	categoriesCh := writer.ClassificationGroups()
-	if categoriesCh == nil {
-		return nil
-	}
-
-	if err := w.enc.EncodeToken(xml.StartElement{Name: xml.Name{Local: "CLASSIFICATION_SYSTEM"}}); err != nil {
-		return err
-	}
-
-	// CLASSIFICATION_SYSTEM_NAME (req)
-	err := w.enc.EncodeElement(SupplierClassification, xml.StartElement{Name: xml.Name{Local: "CLASSIFICATION_SYSTEM_NAME"}})
-	if err != nil {
-		return err
-	}
-	// CLASSIFICATION_SYSTEM_FULLNAME
-	err = w.enc.EncodeElement(w.classificationSystemName(), xml.StartElement{Name: xml.Name{Local: "CLASSIFICATION_SYSTEM_FULLNAME"}})
-	if err != nil {
-		return err
-	}
-
-	// CLASSIFICATION_SYSTEM_VERSION
-	// CLASSIFICATION_SYSTEM_DESCR
-	// CLASSIFICATION_SYSTEM_LEVELS
-	// CLASSIFICATION_SYSTEM_LEVEL_NAMES
-	// ALLOWED_VALUES
-	// UNITS
-	// CLASSIFICATION_SYSTEM_FEATURE_TEMPLATES
-	// CLASSIFICATION_GROUPS (req)
-	var stop bool
-	for !stop {
-		select {
-		case cg, ok := <-categoriesCh:
-			if !ok {
-				stop = true
-				break
-			}
-			if err := w.enc.Encode(cg); err != nil {
-				return errors.Wrapf(err, "unable to encode CLASSIFICATION_GROUP %v", cg.ID)
-			}
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-
-	// /CLASSIFICATION_SYSTEM_NAME (req)
-	if err := w.enc.EncodeToken(xml.EndElement{Name: xml.Name{Local: "CLASSIFICATION_SYSTEM"}}); err != nil {
-		return err
-	}
-	return nil
-}
-*/
