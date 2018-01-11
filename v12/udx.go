@@ -26,8 +26,10 @@ type UserDefinedExtensionFields []*UserDefinedExtensionField
 
 // UserDefinedExtensionField represents a single UDX field.
 type UserDefinedExtensionField struct {
-	Name, Value string
-	Raw         bool // true to marshal Value as raw XML, i.e. not escape it
+	Name     string `xml:"-"`
+	Value    string `xml:",chardata"`
+	InnerXML string `xml:",innerxml"`
+	Raw      bool   `xml:"-"` // true to marshal Value as raw XML, i.e. not escape it
 }
 
 // MarshalXML encodes the contents of the UserDefinedExtensions struct.
@@ -70,7 +72,7 @@ func (x *UserDefinedExtensions) UnmarshalXML(d *xml.Decoder, start xml.StartElem
 		case xml.StartElement:
 			if strings.HasPrefix(se.Name.Local, "UDX.") {
 				field := &UserDefinedExtensionField{Name: se.Name.Local[4:]}
-				d.DecodeElement(&field.Value, &se)
+				d.DecodeElement(&field, &se)
 				fields = append(fields, field)
 			}
 		}
@@ -102,6 +104,18 @@ func (x UserDefinedExtensionFields) Get(name string) (string, bool) {
 	for _, field := range x {
 		if field.Name == name {
 			return field.Value, true
+		}
+	}
+	return "", false
+}
+
+// GetInnerXML returns the inner XML of the UDX field by name.
+// The second return value indicates whether a field with that
+// name actually exists.
+func (x UserDefinedExtensionFields) GetInnerXML(name string) (string, bool) {
+	for _, field := range x {
+		if field.Name == name {
+			return field.InnerXML, true
 		}
 	}
 	return "", false
