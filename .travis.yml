@@ -1,11 +1,13 @@
 language: go
+env:
+- GO111MODULE=on
 go:
-  - "1.10.x"
-  - "1.11.x"
+- "1.10.x"
+- "1.11.x"
 matrix:
   allow_failures:
-    - go: tip
+  - go: tip
 install:
-  - go build ./cmd/...
+- go build ./cmd/...
 script:
-  - go test -race -v ./...
+- go test -race -v ./...
