@@ -9,12 +9,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/olivere/bmecat/v12"
+	"github.com/olivere/bmecat/bmecat12"
 )
 
 // infoCommand parses the BMEcat header and prints the information found there.
 type infoCommand struct {
-	header   *v12.Header
+	header   *bmecat12.Header
 	progress bool
 }
 
@@ -47,14 +47,14 @@ func (cmd *infoCommand) Run(args []string) error {
 	}
 	defer f.Close()
 
-	var o []v12.ReaderOption
+	var o []bmecat12.ReaderOption
 	if cmd.progress {
 		f := func(pass int, offset int64) {
 			fmt.Printf("Pass %d, Offset %6d kB\r", pass, offset/1024)
 		}
-		o = append(o, v12.WithReaderProgress(f))
+		o = append(o, bmecat12.WithReaderProgress(f))
 	}
-	err = v12.NewReader(f, o...).Do(ctx, cmd)
+	err = bmecat12.NewReader(f, o...).Do(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (cmd *infoCommand) Run(args []string) error {
 	return nil
 }
 
-func (cmd *infoCommand) HandleHeader(header *v12.Header) error {
+func (cmd *infoCommand) HandleHeader(header *bmecat12.Header) error {
 	cmd.header = header
 	return io.EOF
 }

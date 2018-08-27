@@ -1,4 +1,4 @@
-package v12_test
+package bmecat12_test
 
 import (
 	"strings"

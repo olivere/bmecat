@@ -1,6 +1,8 @@
-package v12
+package bmecat12
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+)
 
 const (
 	MimeTypeURL   = "url"

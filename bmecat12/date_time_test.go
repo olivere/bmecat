@@ -1,4 +1,4 @@
-package v12
+package bmecat12
 
 import (
 	"testing"

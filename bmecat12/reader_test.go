@@ -1,4 +1,4 @@
-package v12_test
+package bmecat12_test
 
 import (
 	"context"
@@ -7,16 +7,16 @@ import (
 	"path"
 	"testing"
 
-	"github.com/olivere/bmecat/v12"
+	"github.com/olivere/bmecat/bmecat12"
 )
 
 type testHandler struct {
 	firstPassOnly bool
-	header        *v12.Header
-	articles      []*v12.Article
+	header        *bmecat12.Header
+	articles      []*bmecat12.Article
 }
 
-func (h *testHandler) HandleHeader(header *v12.Header) error {
+func (h *testHandler) HandleHeader(header *bmecat12.Header) error {
 	h.header = header
 	if h.firstPassOnly {
 		return io.EOF
@@ -24,7 +24,7 @@ func (h *testHandler) HandleHeader(header *v12.Header) error {
 	return nil
 }
 
-func (h *testHandler) HandleArticle(article *v12.Article) error {
+func (h *testHandler) HandleArticle(article *bmecat12.Article) error {
 	h.articles = append(h.articles, article)
 	return nil
 }
@@ -37,7 +37,7 @@ func TestReadCatalog(t *testing.T) {
 	defer f.Close()
 
 	h := &testHandler{}
-	r := v12.NewReader(f)
+	r := bmecat12.NewReader(f)
 	err = r.Do(context.Background(), h)
 	if err != nil {
 		t.Fatal(err)
@@ -58,7 +58,7 @@ func TestReadUpdateProducts(t *testing.T) {
 	defer f.Close()
 
 	h := &testHandler{}
-	r := v12.NewReader(f)
+	r := bmecat12.NewReader(f)
 	err = r.Do(context.Background(), h)
 	if err != nil {
 		t.Fatal(err)
@@ -79,7 +79,7 @@ func TestReadUpdatePrices(t *testing.T) {
 	defer f.Close()
 
 	h := &testHandler{}
-	r := v12.NewReader(f)
+	r := bmecat12.NewReader(f)
 	err = r.Do(context.Background(), h)
 	if err != nil {
 		t.Fatal(err)

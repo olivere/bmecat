@@ -10,12 +10,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/olivere/bmecat/v12"
+	"github.com/olivere/bmecat/bmecat12"
 )
 
 // perfCommand roughly evaluates the Read performance of the bmecat package.
 type perfCommand struct {
-	header           *v12.Header
+	header           *bmecat12.Header
 	progress         bool
 	numArticles      uint32
 	numCatalogGroups uint32
@@ -52,15 +52,15 @@ func (cmd *perfCommand) Run(args []string) error {
 	}
 	defer f.Close()
 
-	var o []v12.ReaderOption
+	var o []bmecat12.ReaderOption
 	if cmd.progress {
 		f := func(pass int, offset int64) {
 			fmt.Printf("Pass %d, Offset %6d kB\r", pass, offset/1024)
 		}
-		o = append(o, v12.WithReaderProgress(f))
+		o = append(o, bmecat12.WithReaderProgress(f))
 	}
 	start := time.Now()
-	err = v12.NewReader(f, o...).Do(ctx, cmd)
+	err = bmecat12.NewReader(f, o...).Do(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -81,22 +81,22 @@ func (cmd *perfCommand) Run(args []string) error {
 	return nil
 }
 
-func (cmd *perfCommand) HandleHeader(header *v12.Header) error {
+func (cmd *perfCommand) HandleHeader(header *bmecat12.Header) error {
 	cmd.header = header
 	return nil
 }
 
-func (cmd *perfCommand) HandleCatalogGroup(c *v12.CatalogGroup) error {
+func (cmd *perfCommand) HandleCatalogGroup(c *bmecat12.CatalogGroup) error {
 	atomic.AddUint32(&cmd.numCatalogGroups, 1)
 	return nil
 }
 
-func (cmd *perfCommand) HandleClassificationGroup(c *v12.ClassificationGroup) error {
+func (cmd *perfCommand) HandleClassificationGroup(c *bmecat12.ClassificationGroup) error {
 	atomic.AddUint32(&cmd.numClassifGroups, 1)
 	return nil
 }
 
-func (cmd *perfCommand) HandleArticle(article *v12.Article) error {
+func (cmd *perfCommand) HandleArticle(article *bmecat12.Article) error {
 	atomic.AddUint32(&cmd.numArticles, 1)
 	return nil
 }
