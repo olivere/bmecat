@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/olivere/bmecat/bmecat12"
@@ -30,7 +30,7 @@ func (h *testHandler) HandleArticle(article *bmecat12.Article) error {
 }
 
 func TestReadCatalog(t *testing.T) {
-	f, err := os.Open(path.Join("testdata", "new_catalog.golden.xml"))
+	f, err := os.Open(filepath.Join("testdata", "new_catalog.golden.xml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestReadCatalog(t *testing.T) {
 }
 
 func TestReadUpdateProducts(t *testing.T) {
-	f, err := os.Open(path.Join("testdata", "update_products.golden.xml"))
+	f, err := os.Open(filepath.Join("testdata", "update_products.golden.xml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestReadUpdateProducts(t *testing.T) {
 }
 
 func TestReadUpdatePrices(t *testing.T) {
-	f, err := os.Open(path.Join("testdata", "update_prices.golden.xml"))
+	f, err := os.Open(filepath.Join("testdata", "update_prices.golden.xml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,5 +89,32 @@ func TestReadUpdatePrices(t *testing.T) {
 	}
 	if want, have := 1, len(h.articles); want != have {
 		t.Fatalf("want len(articles) = %d, have %d", want, have)
+	}
+}
+
+func BenchmarkReader(b *testing.B) {
+	f, err := os.Open(filepath.Join("testdata", "update_prices.golden.xml"))
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer f.Close()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := f.Seek(0, 0); err != nil {
+			b.Fatal(err)
+		}
+
+		h := &testHandler{}
+		r := bmecat12.NewReader(f)
+		err = r.Do(context.Background(), h)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if h.header == nil {
+			b.Fatal("want Header, have nil")
+		}
+		if want, have := 1, len(h.articles); want != have {
+			b.Fatalf("want len(articles) = %d, have %d", want, have)
+		}
 	}
 }
