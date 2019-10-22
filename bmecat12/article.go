@@ -119,8 +119,8 @@ type ArticleOrderDetails struct {
 	ContentUnit      string  `xml:"CONTENT_UNIT,omitempty"`
 	NoCuPerOu        float64 `xml:"NO_CU_PER_OU,omitempty"`
 	PriceQuantity    float64 `xml:"PRICE_QUANTITY,omitempty"`
-	QuantityMin      int     `xml:"QUANTITY_MIN,omitempty"`
-	QuantityInterval int     `xml:"QUANTITY_INTERVAL,omitempty"`
+	QuantityMin      float64 `xml:"QUANTITY_MIN,omitempty"`
+	QuantityInterval float64 `xml:"QUANTITY_INTERVAL,omitempty"`
 }
 
 const (
@@ -212,9 +212,9 @@ const (
 )
 
 type ArticleReference struct {
-	Type           string `xml:"type,attr"`
-	Quantity       int    `xml:"quantity,attr,omitempty"`
-	ArtIDTo        string `xml:"ART_ID_TO"`
-	CatalogID      string `xml:"CATALOG_ID,omitempty"`
-	CatalogVersion string `xml:"CATALOG_VERSION,omitempty"`
+	Type           string  `xml:"type,attr"`
+	Quantity       float64 `xml:"quantity,attr,omitempty"`
+	ArtIDTo        string  `xml:"ART_ID_TO"`
+	CatalogID      string  `xml:"CATALOG_ID,omitempty"`
+	CatalogVersion string  `xml:"CATALOG_VERSION,omitempty"`
 }
