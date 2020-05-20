@@ -44,6 +44,7 @@ type CatalogWriter interface {
 // if you want to write a CATALOG_GROUP_SYSTEM.
 type CatalogGroupSystemWriter interface {
 	GroupSystem() *GroupSystem
+	ArticleToCatalogGroupMap() []*ArticleToCatalogGroupMap
 }
 
 // Writer allows writing BMEcat 1.2 catalog files.
@@ -180,7 +181,15 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 	}
 
 	if writer.Transaction() != UpdatePrices {
-		// ARTICLE_TO_CATALOGROUP_MAP
+		if gw, ok := writer.(CatalogGroupSystemWriter); ok {
+			if mapping := gw.ArticleToCatalogGroupMap(); mapping != nil {
+				if len(mapping) != 0 {
+					if err := w.enc.Encode(mapping); err != nil {
+						return errors.Wrap(err, "bmecat/v12: unable to write ARTICLE_TO_CATALOGGROUP_MAP")
+					}
+				}
+			}
+		}
 	}
 
 	if err := w.enc.EncodeToken(w.txEndElement(writer)); err != nil {

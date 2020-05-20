@@ -81,6 +81,7 @@ type catalogWriter struct {
 	header               *bmecat12.Header
 	classificationSystem *bmecat12.ClassificationSystem
 	groupSystem          *bmecat12.GroupSystem
+	articlesToGroups     []*bmecat12.ArticleToCatalogGroupMap
 	articles             []*bmecat12.Article
 }
 
@@ -106,6 +107,10 @@ func (w catalogWriter) ClassificationSystem() *bmecat12.ClassificationSystem {
 
 func (w catalogWriter) GroupSystem() *bmecat12.GroupSystem {
 	return w.groupSystem
+}
+
+func (w catalogWriter) ArticleToCatalogGroupMap() []*bmecat12.ArticleToCatalogGroupMap {
+	return w.articlesToGroups
 }
 
 func (w catalogWriter) Articles(ctx context.Context) (<-chan *bmecat12.Article, <-chan error) {
@@ -253,6 +258,12 @@ func TestWriteNewCatalog(t *testing.T) {
 			},
 		},
 	}
+	articlesToGroups := []*bmecat12.ArticleToCatalogGroupMap{
+		{
+			ArticleID:      "1000",
+			CatalogGroupID: "2",
+		},
+	}
 	articles := []*bmecat12.Article{
 		&bmecat12.Article{
 			SupplierAID: "1000",
@@ -359,6 +370,7 @@ func TestWriteNewCatalog(t *testing.T) {
 		header:               testHeader,
 		classificationSystem: classSys,
 		groupSystem:          groupSys,
+		articlesToGroups:     articlesToGroups,
 		articles:             articles,
 	}
 
