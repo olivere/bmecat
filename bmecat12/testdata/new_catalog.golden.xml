@@ -87,6 +87,76 @@
         </CLASSIFICATION_GROUP>
       </CLASSIFICATION_GROUPS>
     </CLASSIFICATION_SYSTEM>
+    <CATALOG_GROUP_SYSTEM>
+      <GROUP_SYSTEM_ID>1</GROUP_SYSTEM_ID>
+      <GROUP_SYSTEM_NAME>Generator 3.0 Group System</GROUP_SYSTEM_NAME>
+      <CATALOG_STRUCTURE type="root">
+        <GROUP_ID>1</GROUP_ID>
+        <GROUP_NAME>Katalog</GROUP_NAME>
+        <PARENT_ID>0</PARENT_ID>
+        <GROUP_ORDER>1</GROUP_ORDER>
+      </CATALOG_STRUCTURE>
+      <CATALOG_STRUCTURE type="node">
+        <GROUP_ID>2</GROUP_ID>
+        <GROUP_NAME>main category 1</GROUP_NAME>
+        <PARENT_ID>1</PARENT_ID>
+        <GROUP_ORDER>2</GROUP_ORDER>
+        <MIME_INFO>
+          <MIME>
+            <MIME_TYPE>image/jpeg</MIME_TYPE>
+            <MIME_SOURCE>2.jpg</MIME_SOURCE>
+          </MIME>
+        </MIME_INFO>
+      </CATALOG_STRUCTURE>
+      <CATALOG_STRUCTURE type="node">
+        <GROUP_ID>3</GROUP_ID>
+        <GROUP_NAME>main category 2</GROUP_NAME>
+        <PARENT_ID>1</PARENT_ID>
+        <GROUP_ORDER>3</GROUP_ORDER>
+        <MIME_INFO>
+          <MIME>
+            <MIME_TYPE>image/jpeg</MIME_TYPE>
+            <MIME_SOURCE>3.jpg</MIME_SOURCE>
+          </MIME>
+        </MIME_INFO>
+      </CATALOG_STRUCTURE>
+      <CATALOG_STRUCTURE type="leaf">
+        <GROUP_ID>4</GROUP_ID>
+        <GROUP_NAME>item category 1</GROUP_NAME>
+        <PARENT_ID>2</PARENT_ID>
+        <GROUP_ORDER>4</GROUP_ORDER>
+        <MIME_INFO>
+          <MIME>
+            <MIME_TYPE>image/jpeg</MIME_TYPE>
+            <MIME_SOURCE>4.jpg</MIME_SOURCE>
+          </MIME>
+        </MIME_INFO>
+      </CATALOG_STRUCTURE>
+      <CATALOG_STRUCTURE type="leaf">
+        <GROUP_ID>5</GROUP_ID>
+        <GROUP_NAME>item category 2</GROUP_NAME>
+        <PARENT_ID>2</PARENT_ID>
+        <GROUP_ORDER>5</GROUP_ORDER>
+        <MIME_INFO>
+          <MIME>
+            <MIME_TYPE>image/jpeg</MIME_TYPE>
+            <MIME_SOURCE>5.jpg</MIME_SOURCE>
+          </MIME>
+        </MIME_INFO>
+      </CATALOG_STRUCTURE>
+      <CATALOG_STRUCTURE type="leaf">
+        <GROUP_ID>6</GROUP_ID>
+        <GROUP_NAME>item category 3</GROUP_NAME>
+        <PARENT_ID>2</PARENT_ID>
+        <GROUP_ORDER>6</GROUP_ORDER>
+        <MIME_INFO>
+          <MIME>
+            <MIME_TYPE>image/jpeg</MIME_TYPE>
+            <MIME_SOURCE>6.jpg</MIME_SOURCE>
+          </MIME>
+        </MIME_INFO>
+      </CATALOG_STRUCTURE>
+    </CATALOG_GROUP_SYSTEM>
     <ARTICLE>
       <SUPPLIER_AID>1000</SUPPLIER_AID>
       <ARTICLE_DETAILS>

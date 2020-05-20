@@ -40,6 +40,12 @@ type CatalogWriter interface {
 	Articles(context.Context) (<-chan *Article, <-chan error)
 }
 
+// Optionally implement this interface on your CatalogWriter
+// if you want to write a CATALOG_GROUP_SYSTEM.
+type CatalogGroupSystemWriter interface {
+	GroupSystem() *GroupSystem
+}
+
 // Writer allows writing BMEcat 1.2 catalog files.
 type Writer struct {
 	w        io.Writer
@@ -156,6 +162,16 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 		}
 
 		// CATALOG_GROUP_SYSTEM
+		if gw, ok := writer.(CatalogGroupSystemWriter); ok {
+			if system := gw.GroupSystem(); system != nil {
+				if !system.IsBlank() {
+					if err := w.enc.Encode(system); err != nil {
+						return errors.Wrap(err, "bmecat/v12: unable to write CATALOG_GROUP_SYSTEM")
+					}
+				}
+
+			}
+		}
 	}
 
 	// ARTICLE

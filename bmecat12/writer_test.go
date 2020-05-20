@@ -80,6 +80,7 @@ type catalogWriter struct {
 	prevVersion          int
 	header               *bmecat12.Header
 	classificationSystem *bmecat12.ClassificationSystem
+	groupSystem          *bmecat12.GroupSystem
 	articles             []*bmecat12.Article
 }
 
@@ -101,6 +102,10 @@ func (w catalogWriter) Header() *bmecat12.Header {
 
 func (w catalogWriter) ClassificationSystem() *bmecat12.ClassificationSystem {
 	return w.classificationSystem
+}
+
+func (w catalogWriter) GroupSystem() *bmecat12.GroupSystem {
+	return w.groupSystem
 }
 
 func (w catalogWriter) Articles(ctx context.Context) (<-chan *bmecat12.Article, <-chan error) {
@@ -157,6 +162,94 @@ func TestWriteNewCatalog(t *testing.T) {
 				Name:     "Mac",
 				ParentID: "2",
 				Type:     "leaf",
+			},
+		},
+	}
+	groupSys := &bmecat12.GroupSystem{
+		ID:   "1",
+		Name: "Generator 3.0 Group System",
+		Structure: []*bmecat12.GroupStructure{
+			{
+				Type:     "root",
+				ID:       "1",
+				Name:     "Katalog",
+				ParentID: "0",
+				Order:    1,
+			},
+			{
+				Type:     "node",
+				ID:       "2",
+				Name:     "main category 1",
+				ParentID: "1",
+				Order:    2,
+				MimeInfo: &bmecat12.MimeInfo{
+					Mimes: []*bmecat12.Mime{
+						{
+							Type:   bmecat12.MimeTypeJPEG,
+							Source: "2.jpg",
+						},
+					},
+				},
+			},
+			{
+				Type:     "node",
+				ID:       "3",
+				Name:     "main category 2",
+				ParentID: "1",
+				Order:    3,
+				MimeInfo: &bmecat12.MimeInfo{
+					Mimes: []*bmecat12.Mime{
+						{
+							Type:   bmecat12.MimeTypeJPEG,
+							Source: "3.jpg",
+						},
+					},
+				},
+			},
+			{
+				Type:     "leaf",
+				ID:       "4",
+				Name:     "item category 1",
+				ParentID: "2",
+				Order:    4,
+				MimeInfo: &bmecat12.MimeInfo{
+					Mimes: []*bmecat12.Mime{
+						{
+							Type:   bmecat12.MimeTypeJPEG,
+							Source: "4.jpg",
+						},
+					},
+				},
+			},
+			{
+				Type:     "leaf",
+				ID:       "5",
+				Name:     "item category 2",
+				ParentID: "2",
+				Order:    5,
+				MimeInfo: &bmecat12.MimeInfo{
+					Mimes: []*bmecat12.Mime{
+						{
+							Type:   bmecat12.MimeTypeJPEG,
+							Source: "5.jpg",
+						},
+					},
+				},
+			},
+			{
+				Type:     "leaf",
+				ID:       "6",
+				Name:     "item category 3",
+				ParentID: "2",
+				Order:    6,
+				MimeInfo: &bmecat12.MimeInfo{
+					Mimes: []*bmecat12.Mime{
+						{
+							Type:   bmecat12.MimeTypeJPEG,
+							Source: "6.jpg",
+						},
+					},
+				},
 			},
 		},
 	}
@@ -265,6 +358,7 @@ func TestWriteNewCatalog(t *testing.T) {
 		prevVersion:          0,
 		header:               testHeader,
 		classificationSystem: classSys,
+		groupSystem:          groupSys,
 		articles:             articles,
 	}
 
