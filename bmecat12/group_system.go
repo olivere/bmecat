@@ -20,8 +20,8 @@ type GroupStructure struct {
 	XMLName xml.Name `xml:"CATALOG_STRUCTURE"`
 
 	Type     string    `xml:"type,attr,omitempty"`
-	ID       string    `xml:"GROUP_ID"`
-	Name     string    `xml:"GROUP_NAME"`
+	ID       string    `xml:"GROUP_ID,omitempty"`
+	Name     string    `xml:"GROUP_NAME,omitempty"`
 	ParentID string    `xml:"PARENT_ID,omitempty"`
 	Order    int       `xml:"GROUP_ORDER,omitempty"`
 	MimeInfo *MimeInfo `xml:"MIME_INFO,omitempty"`
