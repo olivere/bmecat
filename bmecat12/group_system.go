@@ -5,8 +5,8 @@ import "encoding/xml"
 type GroupSystem struct {
 	XMLName xml.Name `xml:"CATALOG_GROUP_SYSTEM"`
 
-	ID   string `xml:"GROUP_SYSTEM_ID"`
-	Name string `xml:"GROUP_SYSTEM_NAME"`
+	ID   string `xml:"GROUP_SYSTEM_ID,omitempty"`
+	Name string `xml:"GROUP_SYSTEM_NAME,omitempty"`
 
 	Structure []*GroupStructure `xml:"CATALOG_STRUCTURE"`
 }
