@@ -3,8 +3,10 @@ package bmecat12_test
 import (
 	"context"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/olivere/bmecat/bmecat12"
@@ -93,19 +95,21 @@ func TestReadUpdatePrices(t *testing.T) {
 }
 
 func BenchmarkReader(b *testing.B) {
-	f, err := os.Open(filepath.Join("testdata", "update_prices.golden.xml"))
+	b.ReportAllocs()
+
+	buf, err := ioutil.ReadFile(filepath.Join("testdata", "update_prices.golden.xml"))
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer f.Close()
+	buffer := strings.NewReader(string(buf))
 
 	for i := 0; i < b.N; i++ {
-		if _, err := f.Seek(0, 0); err != nil {
+		if _, err := buffer.Seek(0, io.SeekStart); err != nil {
 			b.Fatal(err)
 		}
 
 		h := &testHandler{}
-		r := bmecat12.NewReader(f)
+		r := bmecat12.NewReader(buffer)
 		err = r.Do(context.Background(), h)
 		if err != nil {
 			b.Fatal(err)
