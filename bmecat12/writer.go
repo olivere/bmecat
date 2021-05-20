@@ -40,6 +40,13 @@ type CatalogWriter interface {
 	Articles(context.Context) (<-chan *Article, <-chan error)
 }
 
+// Optionally implement this interface on your CatalogWriter
+// if you want to write a CATALOG_GROUP_SYSTEM.
+type CatalogGroupSystemWriter interface {
+	GroupSystem() *GroupSystem
+	ArticleToCatalogGroupMap() []*ArticleToCatalogGroupMap
+}
+
 // Writer allows writing BMEcat 1.2 catalog files.
 type Writer struct {
 	w        io.Writer
@@ -156,6 +163,16 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 		}
 
 		// CATALOG_GROUP_SYSTEM
+		if gw, ok := writer.(CatalogGroupSystemWriter); ok {
+			if system := gw.GroupSystem(); system != nil {
+				if !system.IsBlank() {
+					if err := w.enc.Encode(system); err != nil {
+						return errors.Wrap(err, "bmecat/v12: unable to write CATALOG_GROUP_SYSTEM")
+					}
+				}
+
+			}
+		}
 	}
 
 	// ARTICLE
@@ -164,7 +181,15 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 	}
 
 	if writer.Transaction() != UpdatePrices {
-		// ARTICLE_TO_CATALOGROUP_MAP
+		if gw, ok := writer.(CatalogGroupSystemWriter); ok {
+			if mapping := gw.ArticleToCatalogGroupMap(); mapping != nil {
+				if len(mapping) != 0 {
+					if err := w.enc.Encode(mapping); err != nil {
+						return errors.Wrap(err, "bmecat/v12: unable to write ARTICLE_TO_CATALOGGROUP_MAP")
+					}
+				}
+			}
+		}
 	}
 
 	if err := w.enc.EncodeToken(w.txEndElement(writer)); err != nil {
