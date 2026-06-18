@@ -193,7 +193,7 @@ type ArticlePrice struct {
 	Type       string   `xml:"price_type,attr,omitempty"`
 	Amount     float64  `xml:"PRICE_AMOUNT"`
 	Currency   string   `xml:"PRICE_CURRENCY,omitempty"`
-	Tax        float64  `xml:"TAX,omitempty"`
+	Tax        *float64 `xml:"TAX,omitempty"`
 	Factor     float64  `xml:"PRICE_FACTOR,omitempty"`
 	LowerBound float64  `xml:"LOWER_BOUND,omitempty"`
 	Territory  []string `xml:"TERRITORY,omitempty"`
