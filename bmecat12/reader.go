@@ -3,11 +3,11 @@ package bmecat12
 import (
 	"context"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"golang.org/x/time/rate"
 
 	"github.com/olivere/bmecat/internal"
@@ -107,7 +107,7 @@ func WithReaderProgress(f ReaderProgress) ReaderOption {
 // You must also pass a channel of articles, which Do loops over.
 // If the articles channel is closed, Do will write the rest of
 // the BMEcat file, and then return.
-func (r *Reader) Do(ctx context.Context, handler interface{}) error {
+func (r *Reader) Do(ctx context.Context, handler any) error {
 	_, err := r.r.Seek(0, io.SeekStart)
 	if err != nil {
 		return err
@@ -171,7 +171,7 @@ func (r *Reader) Do(ctx context.Context, handler interface{}) error {
 			case "ARTICLE_TO_CATALOGGROUP_MAP":
 				var m ArticleToCatalogGroupMap
 				if err := dec.DecodeElement(&m, &se); err != nil {
-					return errors.Wrapf(err, "bmecat/reader: unable to decode ARTICLE_TO_CATALOGGROUP_MAP around byte offset %d", dec.InputOffset())
+					return fmt.Errorf("bmecat/reader: unable to decode ARTICLE_TO_CATALOGGROUP_MAP around byte offset %d: %w", dec.InputOffset(), err)
 				}
 				r.artToCatalogGroupMu.Lock()
 				if slice, ok := r.artToCatalogGroup[m.ArticleID]; ok {
@@ -195,7 +195,7 @@ func (r *Reader) Do(ctx context.Context, handler interface{}) error {
 
 	// Seek back to start
 	if _, err := r.r.Seek(0, io.SeekStart); err != nil {
-		return errors.Wrap(err, "bmecat/reader: unable to seek back to start")
+		return fmt.Errorf("bmecat/reader: unable to seek back to start: %w", err)
 	}
 
 	// 2nd pass
@@ -221,7 +221,7 @@ func (r *Reader) Do(ctx context.Context, handler interface{}) error {
 			case "HEADER":
 				var h Header
 				if err := dec.DecodeElement(&h, &se); err != nil {
-					return errors.Wrapf(err, "bmecat/reader: unable to decode HEADER around byte offset %d", dec.InputOffset())
+					return fmt.Errorf("bmecat/reader: unable to decode HEADER around byte offset %d: %w", dec.InputOffset(), err)
 				}
 				h.NumberOfArticles = numArticles
 				h.NumberOfCatalogGroups = numCatalogGroups
@@ -238,27 +238,27 @@ func (r *Reader) Do(ctx context.Context, handler interface{}) error {
 			case "CATALOG_STRUCTURE":
 				var cg CatalogGroup
 				if err := dec.DecodeElement(&cg, &se); err != nil {
-					return errors.Wrapf(err, "bmecat/reader: unable to decode CATALOG_GROUP around byte offset %d", dec.InputOffset())
+					return fmt.Errorf("bmecat/reader: unable to decode CATALOG_GROUP around byte offset %d: %w", dec.InputOffset(), err)
 				}
 				if h.CatalogGroup != nil {
 					if err := h.CatalogGroup.HandleCatalogGroup(&cg); err != nil {
-						return errors.Wrapf(err, "bmecat/reader: handler for CATALOG_GROUP %q returned an error around byte offset %d", cg.ID, dec.InputOffset())
+						return fmt.Errorf("bmecat/reader: handler for CATALOG_GROUP %q returned an error around byte offset %d: %w", cg.ID, dec.InputOffset(), err)
 					}
 				}
 			case "CLASSIFICATION_GROUP":
 				var cg ClassificationGroup
 				if err := dec.DecodeElement(&cg, &se); err != nil {
-					return errors.Wrapf(err, "bmecat/reader: unable to decode CLASSIFICATION_GROUP around byte offset %d", dec.InputOffset())
+					return fmt.Errorf("bmecat/reader: unable to decode CLASSIFICATION_GROUP around byte offset %d: %w", dec.InputOffset(), err)
 				}
 				if h.ClassifGroup != nil {
 					if err := h.ClassifGroup.HandleClassificationGroup(&cg); err != nil {
-						return errors.Wrapf(err, "bmecat/reader: handler for CLASSIFICATION_GROUP %q returned an error around byte offset %d", cg.ID, dec.InputOffset())
+						return fmt.Errorf("bmecat/reader: handler for CLASSIFICATION_GROUP %q returned an error around byte offset %d: %w", cg.ID, dec.InputOffset(), err)
 					}
 				}
 			case "ARTICLE":
 				var a Article
 				if err := dec.DecodeElement(&a, &se); err != nil {
-					return errors.Wrapf(err, "bmecat/reader: unable to decode ARTICLE after SUPPLIER_AID %q around byte offset %d", lastAID, dec.InputOffset())
+					return fmt.Errorf("bmecat/reader: unable to decode ARTICLE after SUPPLIER_AID %q around byte offset %d: %w", lastAID, dec.InputOffset(), err)
 				}
 				if h.Article != nil {
 					// Inject catalog group mappings
@@ -269,7 +269,7 @@ func (r *Reader) Do(ctx context.Context, handler interface{}) error {
 					r.artToCatalogGroupMu.Unlock()
 					// Call handler
 					if err := h.Article.HandleArticle(&a); err != nil {
-						return errors.Wrapf(err, "bmecat/reader: handler for ARTICLE %q returned an error around byte offset %d", a.SupplierAID, dec.InputOffset())
+						return fmt.Errorf("bmecat/reader: handler for ARTICLE %q returned an error around byte offset %d: %w", a.SupplierAID, dec.InputOffset(), err)
 					}
 				}
 				lastAID = a.SupplierAID

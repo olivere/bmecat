@@ -59,16 +59,16 @@ func RegisterCommand(mode string, makeCmd func(Flags *flag.FlagSet) Command) {
 }
 
 // Errorf prints to os.Stderr.
-func Errorf(format string, args ...interface{}) {
+func Errorf(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format, args...)
 }
 
 func hasFlags(flags *flag.FlagSet) bool {
-	any := false
+	found := false
 	flags.VisitAll(func(*flag.Flag) {
-		any = true
+		found = true
 	})
-	return any
+	return found
 }
 
 func usage(msg string) {
@@ -76,12 +76,7 @@ func usage(msg string) {
 	if msg != "" {
 		Errorf("Error: %v\n", msg)
 	}
-	Errorf(`
-Usage: ` + cmdName + ` <mode> [commandopts] [commandargs]
-
-Modes:
-
-`)
+	Errorf("\nUsage: %s <mode> [commandopts] [commandargs]\n\nModes:\n\n", cmdName)
 
 	var modes []string
 	for mode, cmd := range modeCommand {
@@ -110,11 +105,7 @@ Modes:
 		}
 	}
 
-	Errorf(`
-For mode-specific help:
-
-  ` + cmdName + ` help <mode>
-`)
+	Errorf("\nFor mode-specific help:\n\n  %s help <mode>\n", cmdName)
 	//flag.PrintDefaults()
 	Exit(1)
 }

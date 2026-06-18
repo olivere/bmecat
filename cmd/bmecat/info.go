@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-
-	"github.com/pkg/errors"
 
 	"github.com/olivere/bmecat/bmecat12"
 )
