@@ -147,11 +147,39 @@ func convertV12Product(a *bmecat12.Article) *Product {
 		out.SupplierAltID = d.SupplierAltAID
 		out.ManufacturerID = d.ManufacturerAID
 		out.ManufacturerName = d.ManufacturerName
+		out.ManufacturerTypeDescr = d.ManufacturerTypeDescr
+		out.ERPGroupBuyer = d.ERPGroupBuyer
+		out.ERPGroupSupplier = d.ERPGroupSupplier
+		out.DeliveryTime = d.DeliveryTime
 		out.Keywords = d.Keywords
+		out.Remarks = d.Remarks
+		out.Segments = d.Segments
+		for _, b := range d.BuyerAIDs {
+			if b != nil {
+				out.BuyerIDs = append(out.BuyerIDs, &TypedValue{Type: b.Type, Value: b.Value})
+			}
+		}
+		for _, s := range d.SpecialTreatmentClasses {
+			if s != nil {
+				out.SpecialTreatmentClasses = append(out.SpecialTreatmentClasses, &TypedValue{Type: s.Type, Value: s.Value})
+			}
+		}
+		for _, s := range d.ArticleStatus {
+			if s != nil {
+				out.Status = append(out.Status, &TypedValue{Type: s.Type, Value: s.Value})
+			}
+		}
 	}
 	if od := a.OrderDetails; od != nil {
 		out.OrderUnit = od.OrderUnit
+		out.ContentUnit = od.ContentUnit
+		out.NoCuPerOu = od.NoCuPerOu
+		out.PriceQuantity = od.PriceQuantity
+		out.QuantityMin = od.QuantityMin
+		out.QuantityInterval = od.QuantityInterval
+		// QuantityMax has no BMEcat 1.2 equivalent; it stays zero.
 	}
+	out.UDX = convertV12UDX(a.UDX)
 	for _, f := range a.Features {
 		out.Features = append(out.Features, convertV12Features(f))
 	}
@@ -197,6 +225,19 @@ func convertV12Features(f *bmecat12.ArticleFeatures) *Features {
 			Values: ft.Values,
 			Unit:   ft.Unit,
 		})
+	}
+	return out
+}
+
+func convertV12UDX(udx *bmecat12.UserDefinedExtensions) []*UDXField {
+	if udx == nil {
+		return nil
+	}
+	var out []*UDXField
+	for _, f := range udx.Fields {
+		if f != nil {
+			out = append(out, &UDXField{Name: f.Name, Value: f.Value})
+		}
 	}
 	return out
 }
