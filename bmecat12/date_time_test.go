@@ -24,7 +24,7 @@ func TestNewDateTime(t *testing.T) {
 		// #1
 		{
 			Typ:  DateTimeGenerationDate,
-			Date: time.Date(2000, 10, 24, 20, 38, 00, 999, time.UTC),
+			Date: time.Date(2000, 10, 24, 20, 38, 0o0, 999, time.UTC),
 			Expected: &DateTime{
 				Type:           DateTimeGenerationDate,
 				DateString:     "2000-10-24",

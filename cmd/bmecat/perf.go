@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"sync/atomic"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/olivere/bmecat/bmecat12"
 )
@@ -20,7 +19,7 @@ type perfCommand struct {
 	numArticles      uint32
 	numCatalogGroups uint32
 	numClassifGroups uint32
-	completed        uint32
+	completed        atomic.Uint32
 }
 
 func init() {
@@ -102,5 +101,5 @@ func (cmd *perfCommand) HandleArticle(article *bmecat12.Article) error {
 }
 
 func (cmd *perfCommand) HandleComplete() {
-	atomic.AddUint32(&cmd.completed, 1)
+	cmd.completed.Add(1)
 }

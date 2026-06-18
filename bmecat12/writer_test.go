@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -18,67 +18,65 @@ func intp(v int) *int { return &v }
 // float64p returns a pointer to the given float64, for use in optional fields.
 func float64p(v float64) *float64 { return &v }
 
-var (
-	testHeader = &bmecat12.Header{
-		GeneratorInfo: "BMEcat Generator",
-		Catalog: &bmecat12.Catalog{
-			Language:    "deu",
-			ID:          "CAT1",
-			Version:     "1.0",
-			Name:        "Katalogbezeichnung",
-			GenDate:     bmecat12.NewDateTime(bmecat12.DateTimeGenerationDate, time.Date(2000, 10, 24, 20, 38, 00, 0, time.UTC)),
-			Territories: []string{"DE", "AT"},
-			Currency:    "EUR",
-			MimeRoot:    "https://example.com/images",
-			PriceFlags: []bmecat12.PriceFlag{
-				bmecat12.CatalogIncludesPacking,
+var testHeader = &bmecat12.Header{
+	GeneratorInfo: "BMEcat Generator",
+	Catalog: &bmecat12.Catalog{
+		Language:    "deu",
+		ID:          "CAT1",
+		Version:     "1.0",
+		Name:        "Katalogbezeichnung",
+		GenDate:     bmecat12.NewDateTime(bmecat12.DateTimeGenerationDate, time.Date(2000, 10, 24, 20, 38, 0o0, 0, time.UTC)),
+		Territories: []string{"DE", "AT"},
+		Currency:    "EUR",
+		MimeRoot:    "https://example.com/images",
+		PriceFlags: []bmecat12.PriceFlag{
+			bmecat12.CatalogIncludesPacking,
+		},
+	},
+	Buyer: &bmecat12.Buyer{
+		ID:   &bmecat12.IDRef{Type: "buyer", Value: "BUYCO"},
+		Name: "BuyCo Inc.",
+	},
+	Agreements: []*bmecat12.Agreement{
+		{
+			ID: "23/97",
+			Dates: []*bmecat12.DateTime{
+				bmecat12.NewDateTime(bmecat12.DateTimeAgreementStartDate, time.Date(1999, 3, 17, 0, 0, 0, 0, time.UTC)),
+				bmecat12.NewDateTime(bmecat12.DateTimeAgreementStartDate, time.Date(2002, 5, 31, 0, 0, 0, 0, time.UTC)),
 			},
 		},
-		Buyer: &bmecat12.Buyer{
-			ID:   &bmecat12.IDRef{Type: "buyer", Value: "BUYCO"},
-			Name: "BuyCo Inc.",
+	},
+	Supplier: &bmecat12.Supplier{
+		ID:   &bmecat12.IDRef{Type: "supplier", Value: "SUPPLYCO"},
+		Name: "SupplyCo Ltd.",
+		Address: &bmecat12.Address{
+			Type: "supplier",
+			City: "London",
 		},
-		Agreements: []*bmecat12.Agreement{
-			&bmecat12.Agreement{
-				ID: "23/97",
-				Dates: []*bmecat12.DateTime{
-					bmecat12.NewDateTime(bmecat12.DateTimeAgreementStartDate, time.Date(1999, 3, 17, 0, 0, 0, 0, time.UTC)),
-					bmecat12.NewDateTime(bmecat12.DateTimeAgreementStartDate, time.Date(2002, 5, 31, 0, 0, 0, 0, time.UTC)),
-				},
+		MimeInfo: &bmecat12.MimeInfo{
+			Mimes: []*bmecat12.Mime{
+				{Type: "image/jpeg", Source: "supplier_logo.jpg", Purpose: "logo"},
 			},
 		},
-		Supplier: &bmecat12.Supplier{
-			ID:   &bmecat12.IDRef{Type: "supplier", Value: "SUPPLYCO"},
-			Name: "SupplyCo Ltd.",
-			Address: &bmecat12.Address{
-				Type: "supplier",
-				City: "London",
+	},
+	UDX: &bmecat12.UserDefinedExtensions{
+		Fields: []*bmecat12.UserDefinedExtensionField{
+			{
+				Name:  "SYSTEM.CUSTOM_FIELD1",
+				Value: "A",
 			},
-			MimeInfo: &bmecat12.MimeInfo{
-				Mimes: []*bmecat12.Mime{
-					&bmecat12.Mime{Type: "image/jpeg", Source: "supplier_logo.jpg", Purpose: "logo"},
-				},
+			{
+				Name:  "SYSTEM.CUSTOM_FIELD3",
+				Value: "C",
 			},
-		},
-		UDX: &bmecat12.UserDefinedExtensions{
-			Fields: []*bmecat12.UserDefinedExtensionField{
-				&bmecat12.UserDefinedExtensionField{
-					Name:  "SYSTEM.CUSTOM_FIELD1",
-					Value: "A",
-				},
-				&bmecat12.UserDefinedExtensionField{
-					Name:  "SYSTEM.CUSTOM_FIELD3",
-					Value: "C",
-				},
-				&bmecat12.UserDefinedExtensionField{
-					Name:  "WALLMEDIEN.PROPERTIES",
-					Raw:   true,
-					Value: `<UDX.WALLMEDIEN.PROPERTY><UDX.WALLMEDIEN.PROPERTY.NAME>EXTCONFIGFORM</UDX.WALLMEDIEN.PROPERTY.NAME><UDX.WALLMEDIEN.PROPERTY.VALUE>ADV_Relevanz</UDX.WALLMEDIEN.PROPERTY.VALUE></UDX.WALLMEDIEN.PROPERTY>`,
-				},
+			{
+				Name:  "WALLMEDIEN.PROPERTIES",
+				Raw:   true,
+				Value: `<UDX.WALLMEDIEN.PROPERTY><UDX.WALLMEDIEN.PROPERTY.NAME>EXTCONFIGFORM</UDX.WALLMEDIEN.PROPERTY.NAME><UDX.WALLMEDIEN.PROPERTY.VALUE>ADV_Relevanz</UDX.WALLMEDIEN.PROPERTY.VALUE></UDX.WALLMEDIEN.PROPERTY>`,
 			},
 		},
-	}
-)
+	},
+}
 
 type catalogWriter struct {
 	tx                   bmecat12.Transaction
@@ -167,7 +165,7 @@ func TestWriteNewCatalog(t *testing.T) {
 		},
 	}
 	articles := []*bmecat12.Article{
-		&bmecat12.Article{
+		{
 			SupplierAID: "1000",
 			Details: &bmecat12.ArticleDetails{
 				DescriptionShort: `Apple MacBook Pro 13"`,
@@ -175,13 +173,13 @@ func TestWriteNewCatalog(t *testing.T) {
 				EAN:              "8712670911213",
 				SupplierAltAID:   "ALT-1000",
 				BuyerAIDs: []*bmecat12.BuyerAID{
-					&bmecat12.BuyerAID{Type: "KMF", Value: "78787"},
+					{Type: "KMF", Value: "78787"},
 				},
 				ManufacturerAID:  "MPN",
 				ManufacturerName: "Microsoft",
 				DeliveryTime:     intp(2),
 				SpecialTreatmentClasses: []*bmecat12.ArticleSpecialTreatmentClass{
-					&bmecat12.ArticleSpecialTreatmentClass{
+					{
 						Type:  "GGVS",
 						Value: "1201",
 					},
@@ -189,22 +187,22 @@ func TestWriteNewCatalog(t *testing.T) {
 				Keywords: []string{"Notebook", "Hardware"},
 				Remarks:  "Noch heute bestellen!",
 				ArticleStatus: []*bmecat12.ArticleStatus{
-					&bmecat12.ArticleStatus{Type: bmecat12.ArticleStatusCoreArticle, Value: "Kernsortiment"},
+					{Type: bmecat12.ArticleStatusCoreArticle, Value: "Kernsortiment"},
 				},
 			},
 			Features: []*bmecat12.ArticleFeatures{
-				&bmecat12.ArticleFeatures{
+				{
 					FeatureSystemName: "ECLASS-5.1",
 					FeatureGroupID:    "19010203",
 					Features: []*bmecat12.Feature{
-						&bmecat12.Feature{
+						{
 							Name:   "Netzspannung",
 							Values: []string{"110", "220"},
 							Unit:   "VLT",
 						},
 					},
 				},
-				&bmecat12.ArticleFeatures{
+				{
 					FeatureSystemName: "udf_Supplier-1.0",
 					FeatureGroupID:    "5",
 				},
@@ -217,13 +215,13 @@ func TestWriteNewCatalog(t *testing.T) {
 				QuantityMin:   1,
 			},
 			PriceDetails: []*bmecat12.ArticlePriceDetails{
-				&bmecat12.ArticlePriceDetails{
+				{
 					Dates: []*bmecat12.DateTime{
 						bmecat12.NewDateTime(bmecat12.DateTimeValidStartDate, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)),
 						bmecat12.NewDateTime(bmecat12.DateTimeValidEndDate, time.Date(2001, 7, 31, 0, 0, 0, 0, time.UTC)),
 					},
 					Prices: []*bmecat12.ArticlePrice{
-						&bmecat12.ArticlePrice{
+						{
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1499.50,
 							Currency:   "EUR",
@@ -232,7 +230,7 @@ func TestWriteNewCatalog(t *testing.T) {
 							LowerBound: 1,
 							Territory:  []string{"DE", "AT"},
 						},
-						&bmecat12.ArticlePrice{
+						{
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1300.90,
 							Currency:   "EUR",
@@ -247,7 +245,7 @@ func TestWriteNewCatalog(t *testing.T) {
 			// MIME_INFO
 			MimeInfo: &bmecat12.MimeInfo{
 				Mimes: []*bmecat12.Mime{
-					&bmecat12.Mime{
+					{
 						Type:    "image/jpeg",
 						Source:  "55-K-31.jpg",
 						Descr:   "Frontansicht des Notebooks",
@@ -258,7 +256,7 @@ func TestWriteNewCatalog(t *testing.T) {
 			// USER_DEFINED_EXTENSIONS
 			// ARTICLE_REFERENCE
 			References: []*bmecat12.ArticleReference{
-				&bmecat12.ArticleReference{
+				{
 					Type:    bmecat12.ArticleReferenceTypeSimilar,
 					ArtIDTo: "2000",
 				},
@@ -282,7 +280,7 @@ func TestWriteNewCatalog(t *testing.T) {
 	}
 
 	have := strings.TrimSpace(buf.String())
-	data, err := ioutil.ReadFile("testdata/new_catalog.golden.xml")
+	data, err := os.ReadFile("testdata/new_catalog.golden.xml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +329,7 @@ func TestWriteUpdateProducts(t *testing.T) {
 		},
 	}
 	articles := []*bmecat12.Article{
-		&bmecat12.Article{
+		{
 			Mode:        "update",
 			SupplierAID: "1000",
 			Details: &bmecat12.ArticleDetails{
@@ -340,13 +338,13 @@ func TestWriteUpdateProducts(t *testing.T) {
 				EAN:              "8712670911213",
 				SupplierAltAID:   "ALT-1000",
 				BuyerAIDs: []*bmecat12.BuyerAID{
-					&bmecat12.BuyerAID{Type: "KMF", Value: "78787"},
+					{Type: "KMF", Value: "78787"},
 				},
 				ManufacturerAID:  "MPN",
 				ManufacturerName: "Microsoft",
 				DeliveryTime:     intp(2),
 				SpecialTreatmentClasses: []*bmecat12.ArticleSpecialTreatmentClass{
-					&bmecat12.ArticleSpecialTreatmentClass{
+					{
 						Type:  "GGVS",
 						Value: "1201",
 					},
@@ -354,22 +352,22 @@ func TestWriteUpdateProducts(t *testing.T) {
 				Keywords: []string{"Notebook", "Hardware"},
 				Remarks:  "Noch heute bestellen!",
 				ArticleStatus: []*bmecat12.ArticleStatus{
-					&bmecat12.ArticleStatus{Type: bmecat12.ArticleStatusCoreArticle, Value: "Kernsortiment"},
+					{Type: bmecat12.ArticleStatusCoreArticle, Value: "Kernsortiment"},
 				},
 			},
 			Features: []*bmecat12.ArticleFeatures{
-				&bmecat12.ArticleFeatures{
+				{
 					FeatureSystemName: "ECLASS-5.1",
 					FeatureGroupID:    "19010203",
 					Features: []*bmecat12.Feature{
-						&bmecat12.Feature{
+						{
 							Name:   "Netzspannung",
 							Values: []string{"110", "220"},
 							Unit:   "VLT",
 						},
 					},
 				},
-				&bmecat12.ArticleFeatures{
+				{
 					FeatureSystemName: "udf_Supplier-1.0",
 					FeatureGroupID:    "5",
 				},
@@ -382,13 +380,13 @@ func TestWriteUpdateProducts(t *testing.T) {
 				QuantityMin:   1,
 			},
 			PriceDetails: []*bmecat12.ArticlePriceDetails{
-				&bmecat12.ArticlePriceDetails{
+				{
 					Dates: []*bmecat12.DateTime{
 						bmecat12.NewDateTime(bmecat12.DateTimeValidStartDate, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)),
 						bmecat12.NewDateTime(bmecat12.DateTimeValidEndDate, time.Date(2001, 7, 31, 0, 0, 0, 0, time.UTC)),
 					},
 					Prices: []*bmecat12.ArticlePrice{
-						&bmecat12.ArticlePrice{
+						{
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1499.50,
 							Currency:   "EUR",
@@ -397,7 +395,7 @@ func TestWriteUpdateProducts(t *testing.T) {
 							LowerBound: 1,
 							Territory:  []string{"DE", "AT"},
 						},
-						&bmecat12.ArticlePrice{
+						{
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1300.90,
 							Currency:   "EUR",
@@ -412,7 +410,7 @@ func TestWriteUpdateProducts(t *testing.T) {
 			// MIME_INFO
 			MimeInfo: &bmecat12.MimeInfo{
 				Mimes: []*bmecat12.Mime{
-					&bmecat12.Mime{
+					{
 						Type:    "image/jpeg",
 						Source:  "55-K-31.jpg",
 						Descr:   "Frontansicht des Notebooks",
@@ -423,13 +421,13 @@ func TestWriteUpdateProducts(t *testing.T) {
 			// USER_DEFINED_EXTENSIONS
 			// ARTICLE_REFERENCE
 			References: []*bmecat12.ArticleReference{
-				&bmecat12.ArticleReference{
+				{
 					Type:    bmecat12.ArticleReferenceTypeSimilar,
 					ArtIDTo: "2000",
 				},
 			},
 		},
-		&bmecat12.Article{
+		{
 			Mode:        "delete",
 			SupplierAID: "2000",
 		},
@@ -452,7 +450,7 @@ func TestWriteUpdateProducts(t *testing.T) {
 	}
 
 	have := strings.TrimSpace(buf.String())
-	data, err := ioutil.ReadFile("testdata/update_products.golden.xml")
+	data, err := os.ReadFile("testdata/update_products.golden.xml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -469,13 +467,13 @@ func TestWriteUpdatePrices(t *testing.T) {
 		{
 			SupplierAID: "1000",
 			PriceDetails: []*bmecat12.ArticlePriceDetails{
-				&bmecat12.ArticlePriceDetails{
+				{
 					Dates: []*bmecat12.DateTime{
 						bmecat12.NewDateTime(bmecat12.DateTimeValidStartDate, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)),
 						bmecat12.NewDateTime(bmecat12.DateTimeValidEndDate, time.Date(2001, 7, 31, 0, 0, 0, 0, time.UTC)),
 					},
 					Prices: []*bmecat12.ArticlePrice{
-						&bmecat12.ArticlePrice{
+						{
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1499.50,
 							Currency:   "EUR",
@@ -484,7 +482,7 @@ func TestWriteUpdatePrices(t *testing.T) {
 							LowerBound: 1,
 							Territory:  []string{"DE", "AT"},
 						},
-						&bmecat12.ArticlePrice{
+						{
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1300.90,
 							Currency:   "EUR",
@@ -516,7 +514,7 @@ func TestWriteUpdatePrices(t *testing.T) {
 	}
 
 	have := strings.TrimSpace(buf.String())
-	data, err := ioutil.ReadFile("testdata/update_prices.golden.xml")
+	data, err := os.ReadFile("testdata/update_prices.golden.xml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -535,7 +533,7 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 		Groups:   []*bmecat12.ClassificationGroup{}, // no groups
 	}
 	articles := []*bmecat12.Article{
-		&bmecat12.Article{
+		{
 			SupplierAID: "1000",
 			Details: &bmecat12.ArticleDetails{
 				DescriptionShort: `Apple MacBook Pro 13"`,
@@ -543,13 +541,13 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 				EAN:              "8712670911213",
 				SupplierAltAID:   "ALT-1000",
 				BuyerAIDs: []*bmecat12.BuyerAID{
-					&bmecat12.BuyerAID{Type: "KMF", Value: "78787"},
+					{Type: "KMF", Value: "78787"},
 				},
 				ManufacturerAID:  "MPN",
 				ManufacturerName: "Microsoft",
 				DeliveryTime:     intp(2),
 				SpecialTreatmentClasses: []*bmecat12.ArticleSpecialTreatmentClass{
-					&bmecat12.ArticleSpecialTreatmentClass{
+					{
 						Type:  "GGVS",
 						Value: "1201",
 					},
@@ -557,15 +555,15 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 				Keywords: []string{"Notebook", "Hardware"},
 				Remarks:  "Noch heute bestellen!",
 				ArticleStatus: []*bmecat12.ArticleStatus{
-					&bmecat12.ArticleStatus{Type: bmecat12.ArticleStatusCoreArticle, Value: "Kernsortiment"},
+					{Type: bmecat12.ArticleStatusCoreArticle, Value: "Kernsortiment"},
 				},
 			},
 			Features: []*bmecat12.ArticleFeatures{
-				&bmecat12.ArticleFeatures{
+				{
 					FeatureSystemName: "ECLASS-5.1",
 					FeatureGroupID:    "19010203",
 					Features: []*bmecat12.Feature{
-						&bmecat12.Feature{
+						{
 							Name:   "Netzspannung",
 							Values: []string{"110", "220"},
 							Unit:   "VLT",
@@ -581,13 +579,13 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 				QuantityMin:   1,
 			},
 			PriceDetails: []*bmecat12.ArticlePriceDetails{
-				&bmecat12.ArticlePriceDetails{
+				{
 					Dates: []*bmecat12.DateTime{
 						bmecat12.NewDateTime(bmecat12.DateTimeValidStartDate, time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)),
 						bmecat12.NewDateTime(bmecat12.DateTimeValidEndDate, time.Date(2001, 7, 31, 0, 0, 0, 0, time.UTC)),
 					},
 					Prices: []*bmecat12.ArticlePrice{
-						&bmecat12.ArticlePrice{
+						{
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1499.50,
 							Currency:   "EUR",
@@ -596,7 +594,7 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 							LowerBound: 1,
 							Territory:  []string{"DE", "AT"},
 						},
-						&bmecat12.ArticlePrice{
+						{
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1300.90,
 							Currency:   "EUR",
@@ -611,7 +609,7 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 			// MIME_INFO
 			MimeInfo: &bmecat12.MimeInfo{
 				Mimes: []*bmecat12.Mime{
-					&bmecat12.Mime{
+					{
 						Type:    "image/jpeg",
 						Source:  "55-K-31.jpg",
 						Descr:   "Frontansicht des Notebooks",
@@ -622,7 +620,7 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 			// USER_DEFINED_EXTENSIONS
 			// ARTICLE_REFERENCE
 			References: []*bmecat12.ArticleReference{
-				&bmecat12.ArticleReference{
+				{
 					Type:    bmecat12.ArticleReferenceTypeSimilar,
 					ArtIDTo: "2000",
 				},
@@ -646,7 +644,7 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 	}
 
 	have := strings.TrimSpace(buf.String())
-	data, err := ioutil.ReadFile("testdata/new_catalog_with_blank_classification_system.golden.xml")
+	data, err := os.ReadFile("testdata/new_catalog_with_blank_classification_system.golden.xml")
 	if err != nil {
 		t.Fatal(err)
 	}

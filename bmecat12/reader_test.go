@@ -3,7 +3,6 @@ package bmecat12_test
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,7 +96,7 @@ func TestReadUpdatePrices(t *testing.T) {
 func BenchmarkReader(b *testing.B) {
 	b.ReportAllocs()
 
-	buf, err := ioutil.ReadFile(filepath.Join("testdata", "update_prices.golden.xml"))
+	buf, err := os.ReadFile(filepath.Join("testdata", "update_prices.golden.xml"))
 	if err != nil {
 		b.Fatal(err)
 	}

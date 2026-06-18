@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"sync/atomic"
-
-	"github.com/pkg/errors"
 )
 
 type Transaction byte
@@ -130,17 +128,17 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 		w.enc.Indent("", w.indent)
 	}
 	if err := w.writeLeadIn(writer); err != nil {
-		return errors.Wrap(err, "bmecat/v12: unable to write lead in")
+		return fmt.Errorf("bmecat/v12: unable to write lead in: %w", err)
 	}
 	header := writer.Header()
 	if header != nil {
 		if err := w.enc.Encode(header); err != nil {
-			return errors.Wrap(err, "bmecat/v12: unable to write Header")
+			return fmt.Errorf("bmecat/v12: unable to write Header: %w", err)
 		}
 	}
 	tx := writer.Transaction().String()
 	if err := w.enc.EncodeToken(w.txStartElement(writer)); err != nil {
-		return errors.Wrapf(err, "bmecat/v12: unable to write opening %s", tx)
+		return fmt.Errorf("bmecat/v12: unable to write opening %s: %w", tx, err)
 	}
 
 	if writer.Transaction() == NewCatalog {
@@ -150,7 +148,7 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 		if system := writer.ClassificationSystem(); system != nil {
 			if !system.IsBlank() {
 				if err := w.enc.Encode(system); err != nil {
-					return errors.Wrap(err, "bmecat/v12: unable to write CLASSIFICATION_SYSTEM")
+					return fmt.Errorf("bmecat/v12: unable to write CLASSIFICATION_SYSTEM: %w", err)
 				}
 			}
 		}
@@ -160,7 +158,7 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 
 	// ARTICLE
 	if err := w.writeArticles(ctx, writer); err != nil {
-		return errors.Wrapf(err, "bmecat/v12: unable to write ARTICLE")
+		return fmt.Errorf("bmecat/v12: unable to write ARTICLE: %w", err)
 	}
 
 	if writer.Transaction() != UpdatePrices {
@@ -168,10 +166,10 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 	}
 
 	if err := w.enc.EncodeToken(w.txEndElement(writer)); err != nil {
-		return errors.Wrapf(err, "bmecat/v12: unable to write closing %s", tx)
+		return fmt.Errorf("bmecat/v12: unable to write closing %s: %w", tx, err)
 	}
 	if err := w.writeLeadOut(); err != nil {
-		return errors.Wrap(err, "bmecat/v12: unable to write lead out")
+		return fmt.Errorf("bmecat/v12: unable to write lead out: %w", err)
 	}
 	return w.enc.Flush()
 }
@@ -187,8 +185,8 @@ func (w *Writer) writeLeadIn(writer CatalogWriter) error {
 	}
 	// <BMECAT version="1.2" xmlns="http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog">`, writer.Language())
 	attr := []xml.Attr{
-		xml.Attr{Name: xml.Name{Local: "xmlns"}, Value: w.xmlNamespace(writer)},
-		xml.Attr{Name: xml.Name{Local: "version"}, Value: "1.2"},
+		{Name: xml.Name{Local: "xmlns"}, Value: w.xmlNamespace(writer)},
+		{Name: xml.Name{Local: "version"}, Value: "1.2"},
 	}
 	/*
 		if language := writer.Language(); language != "" {
@@ -213,7 +211,7 @@ func (w *Writer) writeArticles(ctx context.Context, writer CatalogWriter) error 
 	}
 
 	var stop bool
-	var written uint32
+	var written atomic.Uint32
 	for !stop {
 		select {
 		case a, ok := <-articlesCh:
@@ -222,9 +220,9 @@ func (w *Writer) writeArticles(ctx context.Context, writer CatalogWriter) error 
 				break
 			}
 			if err := w.writeArticle(a); err != nil {
-				return errors.Wrapf(err, "unable to write SUPPLIER_AID %q", a.SupplierAID)
+				return fmt.Errorf("unable to write SUPPLIER_AID %q: %w", a.SupplierAID, err)
 			}
-			current := atomic.AddUint32(&written, 1)
+			current := written.Add(1)
 			if w.progress != nil {
 				w.progress(int(current))
 			}
