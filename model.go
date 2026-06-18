@@ -81,15 +81,69 @@ type Product struct {
 	SupplierAltID    string
 	ManufacturerID   string
 	ManufacturerName string
-	Keywords         []string
+	// ManufacturerTypeDescr is MANUFACTURER_TYPE_DESCR.
+	ManufacturerTypeDescr string
+	Keywords              []string
+	// Remarks is REMARKS.
+	Remarks string
+	// Segments is the list of SEGMENT values.
+	Segments []string
 
-	Features  []*Features
-	OrderUnit string
-	Prices    []*Price
-	Mimes     []*Mime
+	// ERPGroupBuyer and ERPGroupSupplier are ERP_GROUP_BUYER /
+	// ERP_GROUP_SUPPLIER.
+	ERPGroupBuyer    string
+	ERPGroupSupplier string
+	// DeliveryTime is DELIVERY_TIME (the lead time). It is nil when the source
+	// document omits it.
+	DeliveryTime *int
+	// BuyerIDs are the buyer-specific product identifiers: BUYER_AID (1.2) /
+	// BUYER_PID (2005).
+	BuyerIDs []*TypedValue
+	// SpecialTreatmentClasses are SPECIAL_TREATMENT_CLASS entries.
+	SpecialTreatmentClasses []*TypedValue
+	// Status are the ARTICLE_STATUS (1.2) / PRODUCT_STATUS (2005) entries.
+	Status []*TypedValue
+
+	Features []*Features
+
+	// Order detail fields, from ARTICLE_ORDER_DETAILS (1.2) /
+	// PRODUCT_ORDER_DETAILS (2005).
+	OrderUnit        string
+	ContentUnit      string
+	NoCuPerOu        float64
+	PriceQuantity    float64
+	QuantityMin      float64
+	QuantityInterval float64
+	// QuantityMax is QUANTITY_MAX. It exists only in BMEcat 2005; for 1.2 it is
+	// always zero, because 1.2 has no QUANTITY_MAX element.
+	QuantityMax float64
+
+	Prices []*Price
+	Mimes  []*Mime
+
+	// UDX carries USER_DEFINED_EXTENSIONS as neutral name/value pairs. Callers
+	// that need raw or nested UDX XML should read the bmecat12/bmecat2005
+	// packages directly.
+	UDX []*UDXField
 
 	// CatalogGroupIDs lists the catalog group IDs this product is mapped to.
 	CatalogGroupIDs []string
+}
+
+// TypedValue is the version-neutral view of an element that carries a type
+// attribute and a character-data value, such as BUYER_AID/BUYER_PID,
+// SPECIAL_TREATMENT_CLASS, and ARTICLE_STATUS/PRODUCT_STATUS.
+type TypedValue struct {
+	Type  string
+	Value string
+}
+
+// UDXField is a single user-defined extension, the version-neutral view of a
+// USER_DEFINED_EXTENSIONS child element. Name is the field name without the
+// "UDX." prefix (e.g. "SYSTEM.CUSTOM_FIELD1").
+type UDXField struct {
+	Name  string
+	Value string
 }
 
 // Features is the version-neutral view of ARTICLE_FEATURES (1.2) /

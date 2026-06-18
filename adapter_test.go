@@ -219,3 +219,165 @@ func TestReadWithProgress(t *testing.T) {
 		})
 	}
 }
+
+// catalog12Full and catalog2005Full carry the same product with every
+// order-detail and detail field the neutral Product exposes. The 2005 document
+// additionally sets QUANTITY_MAX, which has no 1.2 equivalent.
+const catalog12Full = `<?xml version="1.0" encoding="UTF-8"?>
+<BMECAT version="1.2">
+  <HEADER><CATALOG><LANGUAGE>deu</LANGUAGE><CATALOG_ID>C</CATALOG_ID><CATALOG_VERSION>1</CATALOG_VERSION></CATALOG></HEADER>
+  <T_NEW_CATALOG>
+    <ARTICLE>
+      <SUPPLIER_AID>1000</SUPPLIER_AID>
+      <ARTICLE_DETAILS>
+        <DESCRIPTION_SHORT>Widget</DESCRIPTION_SHORT>
+        <BUYER_AID type="buyer">BPN-1</BUYER_AID>
+        <MANUFACTURER_TYPE_DESCR>Type-X</MANUFACTURER_TYPE_DESCR>
+        <ERP_GROUP_BUYER>EGB</ERP_GROUP_BUYER>
+        <ERP_GROUP_SUPPLIER>EGS</ERP_GROUP_SUPPLIER>
+        <DELIVERY_TIME>5</DELIVERY_TIME>
+        <SPECIAL_TREATMENT_CLASS type="WEEE">cat1</SPECIAL_TREATMENT_CLASS>
+        <KEYWORD>tool</KEYWORD>
+        <REMARKS>handle with care</REMARKS>
+        <SEGMENT>seg-a</SEGMENT>
+        <ARTICLE_STATUS type="new">live</ARTICLE_STATUS>
+      </ARTICLE_DETAILS>
+      <ARTICLE_ORDER_DETAILS>
+        <ORDER_UNIT>C62</ORDER_UNIT>
+        <CONTENT_UNIT>PCE</CONTENT_UNIT>
+        <NO_CU_PER_OU>10</NO_CU_PER_OU>
+        <PRICE_QUANTITY>100</PRICE_QUANTITY>
+        <QUANTITY_MIN>5</QUANTITY_MIN>
+        <QUANTITY_INTERVAL>5</QUANTITY_INTERVAL>
+      </ARTICLE_ORDER_DETAILS>
+      <USER_DEFINED_EXTENSIONS>
+        <UDX.SYSTEM.CUSTOM_FIELD1>custom</UDX.SYSTEM.CUSTOM_FIELD1>
+      </USER_DEFINED_EXTENSIONS>
+    </ARTICLE>
+  </T_NEW_CATALOG>
+</BMECAT>`
+
+const catalog2005Full = `<?xml version="1.0" encoding="UTF-8"?>
+<BMECAT version="2005" xmlns="http://www.bmecat.org/bmecat/2005">
+  <HEADER><CATALOG><LANGUAGE>deu</LANGUAGE><CATALOG_ID>C</CATALOG_ID><CATALOG_VERSION>1</CATALOG_VERSION></CATALOG></HEADER>
+  <T_NEW_CATALOG>
+    <PRODUCT>
+      <SUPPLIER_PID>1000</SUPPLIER_PID>
+      <PRODUCT_DETAILS>
+        <DESCRIPTION_SHORT>Widget</DESCRIPTION_SHORT>
+        <BUYER_PID type="buyer">BPN-1</BUYER_PID>
+        <MANUFACTURER_TYPE_DESCR>Type-X</MANUFACTURER_TYPE_DESCR>
+        <ERP_GROUP_BUYER>EGB</ERP_GROUP_BUYER>
+        <ERP_GROUP_SUPPLIER>EGS</ERP_GROUP_SUPPLIER>
+        <DELIVERY_TIME>5</DELIVERY_TIME>
+        <SPECIAL_TREATMENT_CLASS type="WEEE">cat1</SPECIAL_TREATMENT_CLASS>
+        <KEYWORD>tool</KEYWORD>
+        <REMARKS>handle with care</REMARKS>
+        <SEGMENT>seg-a</SEGMENT>
+        <PRODUCT_STATUS type="new">live</PRODUCT_STATUS>
+      </PRODUCT_DETAILS>
+      <PRODUCT_ORDER_DETAILS>
+        <ORDER_UNIT>C62</ORDER_UNIT>
+        <CONTENT_UNIT>PCE</CONTENT_UNIT>
+        <NO_CU_PER_OU>10</NO_CU_PER_OU>
+        <PRICE_QUANTITY>100</PRICE_QUANTITY>
+        <QUANTITY_MIN>5</QUANTITY_MIN>
+        <QUANTITY_INTERVAL>5</QUANTITY_INTERVAL>
+        <QUANTITY_MAX>500</QUANTITY_MAX>
+      </PRODUCT_ORDER_DETAILS>
+      <USER_DEFINED_EXTENSIONS>
+        <UDX.SYSTEM.CUSTOM_FIELD1>custom</UDX.SYSTEM.CUSTOM_FIELD1>
+      </USER_DEFINED_EXTENSIONS>
+    </PRODUCT>
+  </T_NEW_CATALOG>
+</BMECAT>`
+
+func TestNeutralProductOrderAndDetailFields(t *testing.T) {
+	for _, tt := range []struct {
+		name            string
+		doc             string
+		wantQuantityMax float64
+	}{
+		{"1.2", catalog12Full, 0}, // 1.2 has no QUANTITY_MAX
+		{"2005", catalog2005Full, 500},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := read(t, tt.doc)
+			if want, have := 1, len(c.products); want != have {
+				t.Fatalf("want %d product(s), have %d", want, have)
+			}
+			p := c.products[0]
+
+			// Order details.
+			if want, have := "C62", p.OrderUnit; want != have {
+				t.Errorf("OrderUnit = %q, want %q", have, want)
+			}
+			if want, have := "PCE", p.ContentUnit; want != have {
+				t.Errorf("ContentUnit = %q, want %q", have, want)
+			}
+			if want, have := 10.0, p.NoCuPerOu; want != have {
+				t.Errorf("NoCuPerOu = %v, want %v", have, want)
+			}
+			if want, have := 100.0, p.PriceQuantity; want != have {
+				t.Errorf("PriceQuantity = %v, want %v", have, want)
+			}
+			if want, have := 5.0, p.QuantityMin; want != have {
+				t.Errorf("QuantityMin = %v, want %v", have, want)
+			}
+			if want, have := 5.0, p.QuantityInterval; want != have {
+				t.Errorf("QuantityInterval = %v, want %v", have, want)
+			}
+			if want, have := tt.wantQuantityMax, p.QuantityMax; want != have {
+				t.Errorf("QuantityMax = %v, want %v", have, want)
+			}
+
+			// Article/product details.
+			if want, have := "Type-X", p.ManufacturerTypeDescr; want != have {
+				t.Errorf("ManufacturerTypeDescr = %q, want %q", have, want)
+			}
+			if want, have := "EGB", p.ERPGroupBuyer; want != have {
+				t.Errorf("ERPGroupBuyer = %q, want %q", have, want)
+			}
+			if want, have := "EGS", p.ERPGroupSupplier; want != have {
+				t.Errorf("ERPGroupSupplier = %q, want %q", have, want)
+			}
+			if p.DeliveryTime == nil {
+				t.Errorf("DeliveryTime = nil, want 5")
+			} else if want, have := 5, *p.DeliveryTime; want != have {
+				t.Errorf("DeliveryTime = %d, want %d", have, want)
+			}
+			if want, have := "handle with care", p.Remarks; want != have {
+				t.Errorf("Remarks = %q, want %q", have, want)
+			}
+			if want, have := []string{"seg-a"}, p.Segments; len(have) != 1 || have[0] != want[0] {
+				t.Errorf("Segments = %v, want %v", have, want)
+			}
+			if want, have := 1, len(p.BuyerIDs); want != have {
+				t.Fatalf("len(BuyerIDs) = %d, want %d", have, want)
+			}
+			if want, have := (bmecat.TypedValue{Type: "buyer", Value: "BPN-1"}), *p.BuyerIDs[0]; want != have {
+				t.Errorf("BuyerIDs[0] = %+v, want %+v", have, want)
+			}
+			if want, have := 1, len(p.SpecialTreatmentClasses); want != have {
+				t.Fatalf("len(SpecialTreatmentClasses) = %d, want %d", have, want)
+			}
+			if want, have := (bmecat.TypedValue{Type: "WEEE", Value: "cat1"}), *p.SpecialTreatmentClasses[0]; want != have {
+				t.Errorf("SpecialTreatmentClasses[0] = %+v, want %+v", have, want)
+			}
+			if want, have := 1, len(p.Status); want != have {
+				t.Fatalf("len(Status) = %d, want %d", have, want)
+			}
+			if want, have := (bmecat.TypedValue{Type: "new", Value: "live"}), *p.Status[0]; want != have {
+				t.Errorf("Status[0] = %+v, want %+v", have, want)
+			}
+
+			// UDX.
+			if want, have := 1, len(p.UDX); want != have {
+				t.Fatalf("len(UDX) = %d, want %d", have, want)
+			}
+			if want, have := (bmecat.UDXField{Name: "SYSTEM.CUSTOM_FIELD1", Value: "custom"}), *p.UDX[0]; want != have {
+				t.Errorf("UDX[0] = %+v, want %+v", have, want)
+			}
+		})
+	}
+}

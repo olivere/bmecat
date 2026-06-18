@@ -133,11 +133,39 @@ func convertV2005Product(p *bmecat2005.Product) *Product {
 		out.SupplierAltID = d.SupplierAltPID
 		out.ManufacturerID = d.ManufacturerPID
 		out.ManufacturerName = d.ManufacturerName
+		out.ManufacturerTypeDescr = d.ManufacturerTypeDescr
+		out.ERPGroupBuyer = d.ERPGroupBuyer
+		out.ERPGroupSupplier = d.ERPGroupSupplier
+		out.DeliveryTime = d.DeliveryTime
 		out.Keywords = d.Keywords
+		out.Remarks = d.Remarks
+		out.Segments = d.Segments
+		for _, b := range d.BuyerPIDs {
+			if b != nil {
+				out.BuyerIDs = append(out.BuyerIDs, &TypedValue{Type: b.Type, Value: b.Value})
+			}
+		}
+		for _, s := range d.SpecialTreatmentClasses {
+			if s != nil {
+				out.SpecialTreatmentClasses = append(out.SpecialTreatmentClasses, &TypedValue{Type: s.Type, Value: s.Value})
+			}
+		}
+		for _, s := range d.ProductStatus {
+			if s != nil {
+				out.Status = append(out.Status, &TypedValue{Type: s.Type, Value: s.Value})
+			}
+		}
 	}
 	if od := p.OrderDetails; od != nil {
 		out.OrderUnit = od.OrderUnit
+		out.ContentUnit = od.ContentUnit
+		out.NoCuPerOu = od.NoCuPerOu
+		out.PriceQuantity = od.PriceQuantity
+		out.QuantityMin = od.QuantityMin
+		out.QuantityInterval = od.QuantityInterval
+		out.QuantityMax = od.QuantityMax
 	}
+	out.UDX = convertV2005UDX(p.UDX)
 	for _, f := range p.Features {
 		out.Features = append(out.Features, convertV2005Features(f))
 	}
@@ -210,6 +238,19 @@ func convertV2005Features(f *bmecat2005.ProductFeatures) *Features {
 			Values: ft.Values,
 			Unit:   ft.Unit,
 		})
+	}
+	return out
+}
+
+func convertV2005UDX(udx *bmecat2005.UserDefinedExtensions) []*UDXField {
+	if udx == nil {
+		return nil
+	}
+	var out []*UDXField
+	for _, f := range udx.Fields {
+		if f != nil {
+			out = append(out, &UDXField{Name: f.Name, Value: f.Value})
+		}
 	}
 	return out
 }

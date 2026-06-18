@@ -49,6 +49,8 @@ jobs:
           fi
       - name: Vet
         run: go vet ./...
+      - name: Staticcheck
+        run: go tool staticcheck ./...
 
   govulncheck:
     name: Vulnerability scan

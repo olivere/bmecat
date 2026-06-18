@@ -86,7 +86,7 @@ func usage(msg string) {
 	}
 	sort.Strings(modes)
 	for _, mode := range modes {
-		cmd, _ := modeCommand[mode]
+		cmd := modeCommand[mode]
 		if des, ok := cmd.(describer); ok {
 			Errorf("  %-25s %s\n", mode, des.Describe())
 		}
@@ -143,6 +143,14 @@ func main() {
 	}
 
 	mode := args[0]
+	if mode == "help" {
+		if len(args) < 2 {
+			usage("No mode given for help.")
+		}
+		help(args[1])
+		Exit(0)
+	}
+
 	cmd, ok := modeCommand[mode]
 	if !ok {
 		usage(fmt.Sprintf("Unknown mode %q", mode))
