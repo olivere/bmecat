@@ -8,12 +8,13 @@ import (
 	"io"
 	"os"
 
-	"github.com/olivere/bmecat/bmecat12"
+	"github.com/olivere/bmecat"
 )
 
 // infoCommand parses the BMEcat header and prints the information found there.
+// It reads both BMEcat 1.2 and 2005 files via the version-neutral facade.
 type infoCommand struct {
-	header   *bmecat12.Header
+	header   *bmecat.Header
 	progress bool
 }
 
@@ -46,14 +47,14 @@ func (cmd *infoCommand) Run(args []string) error {
 	}
 	defer f.Close()
 
-	var o []bmecat12.ReaderOption
+	var o []bmecat.ReaderOption
 	if cmd.progress {
 		f := func(pass int, offset int64) {
 			fmt.Printf("Pass %d, Offset %6d kB\r", pass, offset/1024)
 		}
-		o = append(o, bmecat12.WithReaderProgress(f))
+		o = append(o, bmecat.WithReaderProgress(f))
 	}
-	err = bmecat12.NewReader(f, o...).Do(ctx, cmd)
+	err = bmecat.NewReader(f, o...).Do(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -65,14 +66,15 @@ func (cmd *infoCommand) Run(args []string) error {
 		return errors.New("did not receive HEADER")
 	}
 
-	fmt.Printf("%-24s: %7d\n", "Products", cmd.header.NumberOfArticles)
+	fmt.Printf("%-24s: %7s\n", "Version", cmd.header.Version)
+	fmt.Printf("%-24s: %7d\n", "Products", cmd.header.NumberOfProducts)
 	fmt.Printf("%-24s: %7d\n", "Catalog Groups", cmd.header.NumberOfCatalogGroups)
 	fmt.Printf("%-24s: %7d\n", "Classification Groups", cmd.header.NumberOfClassificationGroups)
 
 	return nil
 }
 
-func (cmd *infoCommand) HandleHeader(header *bmecat12.Header) error {
+func (cmd *infoCommand) HandleHeader(header *bmecat.Header) error {
 	cmd.header = header
 	return io.EOF
 }

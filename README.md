@@ -145,7 +145,8 @@ writer tests for complete, runnable examples.
 ## Command-line tool
 
 The `cmd/bmecat` package contains a small CLI that demonstrates the library,
-e.g. printing the header of a catalog:
+e.g. printing the header of a catalog. It reads both BMEcat 1.2 and 2005 files,
+auto-detecting the version:
 
 ```sh
 go run ./cmd/bmecat info path/to/catalog.xml
