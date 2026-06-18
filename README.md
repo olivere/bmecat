@@ -23,11 +23,68 @@ Go 1.25 or later.
 go get github.com/olivere/bmecat
 ```
 
-## Reading a catalog
+## Reading any version (recommended)
 
-Implement only the handler interfaces you care about — `HeaderHandler`,
-`ArticleHandler`, `CatalogGroupHandler`, `ClassificationGroupHandler` and/or
-`CompletionHandler` — and pass your handler to `Reader.Do`:
+If you ingest catalogs from a mix of suppliers, use the top-level `bmecat`
+package. `bmecat.NewReader` auto-detects the version from the root
+`<BMECAT version="…">` element and normalises both 1.2 and 2005 into a single,
+version-neutral model — so you write your mapping once. Implement only the
+neutral handler interfaces you care about (`HeaderHandler`, `ProductHandler`,
+`CatalogGroupHandler`, `ClassificationGroupHandler` and/or `CompletionHandler`):
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/olivere/bmecat"
+)
+
+// handler works unchanged for BMEcat 1.2 and 2005 input.
+type handler struct{}
+
+func (handler) HandleHeader(h *bmecat.Header) error {
+	fmt.Printf("Catalog %q (BMEcat %s) with %d product(s)\n",
+		h.Catalog.Name, h.Version, h.NumberOfProducts)
+	return nil
+}
+
+func (handler) HandleProduct(p *bmecat.Product) error {
+	fmt.Printf("Product %s: %s (GTIN %s)\n", p.ID, p.DescriptionShort, p.GTIN)
+	return nil
+}
+
+func main() {
+	f, err := os.Open("catalog.xml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	if err := bmecat.NewReader(f).Do(context.Background(), handler{}); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+The neutral model exposes the fields 1.2 and 2005 share; in particular
+`Product.GTIN` unifies the 1.2 `EAN` and 2005 `INTERNATIONAL_PID` elements.
+Runnable examples are in the
+[package documentation](https://pkg.go.dev/github.com/olivere/bmecat#pkg-examples).
+
+## Reading a specific version
+
+To work with a single version directly — for raw fidelity, version-specific
+fields (e.g. 2005's `PRODUCT_LOGISTIC_DETAILS`), or writing — use the
+`bmecat12` or `bmecat2005` package. Both share the same shape: implement only
+the handler interfaces you care about — `HeaderHandler`, `ArticleHandler`
+(1.2) / `ProductHandler` (2005), `CatalogGroupHandler`,
+`ClassificationGroupHandler` and/or `CompletionHandler` — and pass your handler
+to `Reader.Do`:
 
 ```go
 package main
@@ -78,9 +135,12 @@ Windows-1252, which matches how most real-world catalogs are authored.
 
 ## Writing a catalog
 
-Implement the `bmecat12.CatalogWriter` interface and hand it to `Writer.Do`.
-See the [package documentation](https://pkg.go.dev/github.com/olivere/bmecat/bmecat12)
-and the writer tests for complete, runnable examples.
+Writing is version-specific. Implement the `CatalogWriter` interface of the
+target package (`bmecat12` or `bmecat2005`) and hand it to that package's
+`Writer.Do`. See the package documentation
+([bmecat12](https://pkg.go.dev/github.com/olivere/bmecat/bmecat12),
+[bmecat2005](https://pkg.go.dev/github.com/olivere/bmecat/bmecat2005)) and the
+writer tests for complete, runnable examples.
 
 ## Command-line tool
 
