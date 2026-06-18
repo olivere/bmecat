@@ -230,9 +230,12 @@ func (r *Reader) Do(ctx context.Context, handler any) error {
 				h.NumberOfArticleToCatalogGroupMaps = len(r.artToCatalogGroup)
 				r.artToCatalogGroupMu.Unlock()
 				if f, ok := handler.(HeaderHandler); ok {
-					if err := f.HandleHeader(&h); err == io.EOF {
-						stop = true
-						break
+					if err := f.HandleHeader(&h); err != nil {
+						if err == io.EOF {
+							stop = true
+							break
+						}
+						return fmt.Errorf("bmecat/reader: handler for HEADER returned an error around byte offset %d: %w", dec.InputOffset(), err)
 					}
 				}
 			case "CATALOG_STRUCTURE":
