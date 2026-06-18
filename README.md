@@ -66,6 +66,14 @@ func main() {
 }
 ```
 
+### Character encodings
+
+The reader decodes any encoding declared in the XML prolog that is registered
+with the IANA character set registry and implemented by `golang.org/x/text` —
+UTF-8, the ISO-8859 family, Windows code pages, and CJK encodings such as GBK,
+GB18030, Big5, Shift-JIS and EUC-KR. ISO-8859-1 is decoded leniently as
+Windows-1252, which matches how most real-world catalogs are authored.
+
 ## Writing a catalog
 
 Implement the `bmecat12.CatalogWriter` interface and hand it to `Writer.Do`.
