@@ -49,6 +49,24 @@ func TestReadArticleHandlerError(t *testing.T) {
 	}
 }
 
+type failingHeaderHandler struct{}
+
+func (failingHeaderHandler) HandleHeader(*bmecat12.Header) error { return errBoom }
+
+func TestReadHeaderHandlerError(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "new_catalog.golden.xml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	r := bmecat12.NewReader(f)
+	err = r.Do(context.Background(), failingHeaderHandler{})
+	if !errors.Is(err, errBoom) {
+		t.Fatalf("expected wrapped errBoom, got %v", err)
+	}
+}
+
 // --- Reader group dispatch and completion -----------------------------------
 
 type recordingHandler struct {
