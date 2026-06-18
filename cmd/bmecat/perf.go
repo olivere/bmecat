@@ -9,14 +9,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/olivere/bmecat/bmecat12"
+	"github.com/olivere/bmecat"
 )
 
 // perfCommand roughly evaluates the Read performance of the bmecat package.
+// It reads both BMEcat 1.2 and 2005 files via the version-neutral facade.
 type perfCommand struct {
-	header           *bmecat12.Header
+	header           *bmecat.Header
 	progress         bool
-	numArticles      uint32
+	numProducts      uint32
 	numCatalogGroups uint32
 	numClassifGroups uint32
 	completed        atomic.Uint32
@@ -51,15 +52,15 @@ func (cmd *perfCommand) Run(args []string) error {
 	}
 	defer f.Close()
 
-	var o []bmecat12.ReaderOption
+	var o []bmecat.ReaderOption
 	if cmd.progress {
 		f := func(pass int, offset int64) {
 			fmt.Printf("Pass %d, Offset %6d kB\r", pass, offset/1024)
 		}
-		o = append(o, bmecat12.WithReaderProgress(f))
+		o = append(o, bmecat.WithReaderProgress(f))
 	}
 	start := time.Now()
-	err = bmecat12.NewReader(f, o...).Do(ctx, cmd)
+	err = bmecat.NewReader(f, o...).Do(ctx, cmd)
 	if err != nil {
 		return err
 	}
@@ -71,32 +72,33 @@ func (cmd *perfCommand) Run(args []string) error {
 		return errors.New("did not receive HEADER")
 	}
 
-	fmt.Printf("%-24s: %7d / %7d\n", "Products", cmd.header.NumberOfArticles, cmd.numArticles)
+	fmt.Printf("%-24s: %7s\n", "Version", cmd.header.Version)
+	fmt.Printf("%-24s: %7d / %7d\n", "Products", cmd.header.NumberOfProducts, cmd.numProducts)
 	fmt.Printf("%-24s: %7d / %7d\n", "Catalog Groups", cmd.header.NumberOfCatalogGroups, cmd.numCatalogGroups)
 	fmt.Printf("%-24s: %7d / %7d\n", "Classification Groups", cmd.header.NumberOfClassificationGroups, cmd.numClassifGroups)
 	fmt.Printf("%-24s: %v\n", "Took", took.String())
-	fmt.Printf("%-24s: %7.2f\n", "Products/sec", float64(cmd.numArticles)/took.Seconds())
+	fmt.Printf("%-24s: %7.2f\n", "Products/sec", float64(cmd.numProducts)/took.Seconds())
 
 	return nil
 }
 
-func (cmd *perfCommand) HandleHeader(header *bmecat12.Header) error {
+func (cmd *perfCommand) HandleHeader(header *bmecat.Header) error {
 	cmd.header = header
 	return nil
 }
 
-func (cmd *perfCommand) HandleCatalogGroup(c *bmecat12.CatalogGroup) error {
+func (cmd *perfCommand) HandleCatalogGroup(c *bmecat.CatalogGroup) error {
 	atomic.AddUint32(&cmd.numCatalogGroups, 1)
 	return nil
 }
 
-func (cmd *perfCommand) HandleClassificationGroup(c *bmecat12.ClassificationGroup) error {
+func (cmd *perfCommand) HandleClassificationGroup(c *bmecat.ClassificationGroup) error {
 	atomic.AddUint32(&cmd.numClassifGroups, 1)
 	return nil
 }
 
-func (cmd *perfCommand) HandleArticle(article *bmecat12.Article) error {
-	atomic.AddUint32(&cmd.numArticles, 1)
+func (cmd *perfCommand) HandleProduct(p *bmecat.Product) error {
+	atomic.AddUint32(&cmd.numProducts, 1)
 	return nil
 }
 
