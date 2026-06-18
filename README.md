@@ -6,7 +6,9 @@
 
 A small, dependency-light library for reading and writing
 [BMEcat](https://www.bmecat.org/) electronic product catalogs in Go.
-It currently supports BMEcat version 1.2 via the `bmecat12` package.
+It supports BMEcat version 1.2 via the `bmecat12` package and BMEcat 2005
+(2.0) via the `bmecat2005` package. The two packages share the same
+streaming, handler-based API, so they are learnable as one.
 
 Reading is streaming and handler-based, so large catalogs can be processed
 without loading the whole document into memory.
@@ -106,9 +108,15 @@ are copyrighted by the BME; obtain them from the authoritative sources below:
 - [BMEcat downloads](https://www.bme.de/initiativen/bmecat/download/) — where to
   obtain the official specification documents and DTDs
 
-This library implements the subset of **BMEcat 1.2** needed to read and write
-the common `T_NEW_CATALOG`, `T_UPDATE_PRODUCTS` and `T_UPDATE_PRICES`
-transactions.
+This library implements the subset of **BMEcat 1.2** (`bmecat12`) needed to
+read and write the common `T_NEW_CATALOG`, `T_UPDATE_PRODUCTS` and
+`T_UPDATE_PRICES` transactions, and a mirror of that surface for **BMEcat
+2005** (`bmecat2005`). BMEcat 2005 is mostly a set of element renames over
+1.2 (`ARTICLE` becomes `PRODUCT`, `EAN` becomes `INTERNATIONAL_PID`,
+`MANUFACTURER_AID` becomes `MANUFACTURER_PID`, and so on); the `bmecat2005`
+package also models a few common 2005-only additions such as
+`INTERNATIONAL_PID` type qualifiers and `PRODUCT_LOGISTIC_DETAILS`. Writing
+currently targets `T_NEW_CATALOG`.
 
 ## Development
 
