@@ -219,18 +219,18 @@ func (r *Reader) Do(ctx context.Context, handler any) error {
 		case xml.StartElement:
 			switch se.Name.Local {
 			case "HEADER":
-				var h Header
-				if err := dec.DecodeElement(&h, &se); err != nil {
+				var hdr Header
+				if err := dec.DecodeElement(&hdr, &se); err != nil {
 					return fmt.Errorf("bmecat/reader: unable to decode HEADER around byte offset %d: %w", dec.InputOffset(), err)
 				}
-				h.NumberOfArticles = numArticles
-				h.NumberOfCatalogGroups = numCatalogGroups
-				h.NumberOfClassificationGroups = numClassifGroups
+				hdr.NumberOfArticles = numArticles
+				hdr.NumberOfCatalogGroups = numCatalogGroups
+				hdr.NumberOfClassificationGroups = numClassifGroups
 				r.artToCatalogGroupMu.Lock()
-				h.NumberOfArticleToCatalogGroupMaps = len(r.artToCatalogGroup)
+				hdr.NumberOfArticleToCatalogGroupMaps = len(r.artToCatalogGroup)
 				r.artToCatalogGroupMu.Unlock()
-				if f, ok := handler.(HeaderHandler); ok {
-					if err := f.HandleHeader(&h); err != nil {
+				if h.Header != nil {
+					if err := h.Header.HandleHeader(&hdr); err != nil {
 						if err == io.EOF {
 							stop = true
 							break
