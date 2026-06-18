@@ -57,7 +57,7 @@ type ArticleDetails struct {
 	ManufacturerTypeDescr   string                          `xml:"MANUFACTURER_TYPE_DESCR,omitempty"`
 	ERPGroupBuyer           string                          `xml:"ERP_GROUP_BUYER,omitempty"`
 	ERPGroupSupplier        string                          `xml:"ERP_GROUP_SUPPLIER,omitempty"`
-	DeliveryTime            float32                         `xml:"DELIVERY_TIME,omitempty"`
+	DeliveryTime            *int                            `xml:"DELIVERY_TIME,omitempty"`
 	SpecialTreatmentClasses []*ArticleSpecialTreatmentClass `xml:"SPECIAL_TREATMENT_CLASS,omitempty"`
 	Keywords                []string                        `xml:"KEYWORD,omitempty"`
 	Remarks                 string                          `xml:"REMARKS,omitempty"`

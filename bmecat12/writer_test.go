@@ -12,6 +12,9 @@ import (
 	"github.com/olivere/bmecat/bmecat12"
 )
 
+// intp returns a pointer to the given int, for use in optional fields.
+func intp(v int) *int { return &v }
+
 var (
 	testHeader = &bmecat12.Header{
 		GeneratorInfo: "BMEcat Generator",
@@ -173,7 +176,7 @@ func TestWriteNewCatalog(t *testing.T) {
 				},
 				ManufacturerAID:  "MPN",
 				ManufacturerName: "Microsoft",
-				DeliveryTime:     1.5,
+				DeliveryTime:     intp(2),
 				SpecialTreatmentClasses: []*bmecat12.ArticleSpecialTreatmentClass{
 					&bmecat12.ArticleSpecialTreatmentClass{
 						Type:  "GGVS",
@@ -338,7 +341,7 @@ func TestWriteUpdateProducts(t *testing.T) {
 				},
 				ManufacturerAID:  "MPN",
 				ManufacturerName: "Microsoft",
-				DeliveryTime:     1.5,
+				DeliveryTime:     intp(2),
 				SpecialTreatmentClasses: []*bmecat12.ArticleSpecialTreatmentClass{
 					&bmecat12.ArticleSpecialTreatmentClass{
 						Type:  "GGVS",
@@ -541,7 +544,7 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 				},
 				ManufacturerAID:  "MPN",
 				ManufacturerName: "Microsoft",
-				DeliveryTime:     1.5,
+				DeliveryTime:     intp(2),
 				SpecialTreatmentClasses: []*bmecat12.ArticleSpecialTreatmentClass{
 					&bmecat12.ArticleSpecialTreatmentClass{
 						Type:  "GGVS",
