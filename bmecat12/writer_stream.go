@@ -11,14 +11,13 @@ import "context"
 //
 // produce is called once and streams articles by calling yield once per
 // article. yield forwards the article to Writer and returns a non-nil error
-// when the context is canceled (Writer cancels it, if it was made cancelable,
-// once Do returns), letting the producer stop early:
+// when ctx is canceled, letting the producer stop early:
 //
 //	func (c myCatalog) Articles(ctx context.Context) (<-chan *bmecat12.Article, <-chan error) {
 //		return bmecat12.StreamArticles(ctx, func(yield func(*bmecat12.Article) error) error {
 //			for rows.Next() {
 //				if err := yield(buildArticle(rows)); err != nil {
-//					return err // downstream stopped; stop producing
+//					return err // ctx canceled; stop producing
 //				}
 //			}
 //			return rows.Err()
@@ -28,6 +27,11 @@ import "context"
 // Returning a non-nil error from produce — from yield or the producer itself,
 // such as rows.Err — stops the write and is reported by Writer.Do. A nil
 // article is skipped.
+//
+// Writer.Do does not cancel ctx itself, so if Do can return before the producer
+// is drained (an encoding error mid-stream), pass a cancelable context and
+// cancel it once Do returns; the pending yield then unblocks instead of leaking
+// the producer goroutine.
 func StreamArticles(ctx context.Context, produce func(yield func(*Article) error) error) (<-chan *Article, <-chan error) {
 	out := make(chan *Article)
 	errc := make(chan error, 1)
