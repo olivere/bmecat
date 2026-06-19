@@ -209,3 +209,12 @@ func (w *Writer) writeV2005(ctx context.Context, cw CatalogWriter) error {
 	}
 	return bmecat2005.NewWriter(w.w, bmecat2005.WithIndent(w.indent)).Do(ctx, adapter)
 }
+
+// dailyPriceString renders a neutral PriceDetails.IsDailyPrice flag onto the
+// DAILY_PRICE element value, returning "" (omitted) when the flag is unset.
+func dailyPriceString(daily bool) string {
+	if daily {
+		return "true"
+	}
+	return ""
+}

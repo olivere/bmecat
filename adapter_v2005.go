@@ -1,6 +1,10 @@
 package bmecat
 
-import "github.com/olivere/bmecat/bmecat2005"
+import (
+	"time"
+
+	"github.com/olivere/bmecat/bmecat2005"
+)
 
 // v2005Adapter implements the bmecat2005 handler interfaces, converts each
 // version-specific element into the neutral type, and forwards it to the
@@ -176,17 +180,12 @@ func convertV2005Product(p *bmecat2005.Product) *Product {
 		out.Features = append(out.Features, convertV2005Features(f))
 	}
 	for _, pd := range p.PriceDetails {
-		for _, pr := range pd.Prices {
-			out.Prices = append(out.Prices, &Price{
-				Type:       pr.Type,
-				Amount:     pr.Amount,
-				Currency:   pr.Currency,
-				Tax:        taxFromV2005Price(pr),
-				Factor:     pr.Factor,
-				LowerBound: pr.LowerBound,
-				Territory:  pr.Territory,
-			})
+		npd := convertV2005PriceDetails(pd)
+		if npd == nil {
+			continue
 		}
+		out.PriceDetails = append(out.PriceDetails, npd)
+		out.Prices = append(out.Prices, npd.Prices...)
 	}
 	if mi := p.MimeInfo; mi != nil {
 		for _, m := range mi.Mimes {
@@ -200,6 +199,50 @@ func convertV2005Product(p *bmecat2005.Product) *Product {
 		}
 	}
 	return out
+}
+
+func convertV2005PriceDetails(pd *bmecat2005.ProductPriceDetails) *PriceDetails {
+	if pd == nil {
+		return nil
+	}
+	out := &PriceDetails{
+		ValidStart:   v2005ValidDate(pd.Dates, bmecat2005.DateTimeValidStartDate),
+		ValidEnd:     v2005ValidDate(pd.Dates, bmecat2005.DateTimeValidEndDate),
+		IsDailyPrice: pd.IsDailyPrice(),
+	}
+	for _, pr := range pd.Prices {
+		if pr == nil {
+			continue
+		}
+		out.Prices = append(out.Prices, &Price{
+			Type:       pr.Type,
+			Amount:     pr.Amount,
+			Currency:   pr.Currency,
+			Tax:        taxFromV2005Price(pr),
+			Factor:     pr.Factor,
+			LowerBound: pr.LowerBound,
+			Territory:  pr.Territory,
+		})
+	}
+	return out
+}
+
+// v2005ValidDate returns the parsed value of the first DATETIME of the given
+// type, or nil when it is absent or unparseable. Unlike ProductPriceDetails'
+// ValidStartDate/ValidEndDate, it does not substitute a sentinel default, so the
+// neutral model can distinguish "no date" from a real bound.
+func v2005ValidDate(dates []*bmecat2005.DateTime, typ string) *time.Time {
+	for _, d := range dates {
+		if d == nil || d.Type != typ {
+			continue
+		}
+		t, err := d.Time()
+		if err != nil {
+			return nil
+		}
+		return &t
+	}
+	return nil
 }
 
 // taxFromV2005Price returns the tax rate for a 2005 price: the bare TAX

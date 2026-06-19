@@ -2,6 +2,7 @@ package bmecat
 
 import (
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -172,8 +173,17 @@ type Product struct {
 	// always zero, because 1.2 has no QUANTITY_MAX element.
 	QuantityMax float64
 
+	// Prices is the flattened list of every price block across all
+	// PriceDetails wrappers, in document order. It is a convenience view that
+	// loses the wrapper boundary and validity dates; consumers that need those
+	// should read PriceDetails instead.
 	Prices []*Price
-	Mimes  []*Mime
+	// PriceDetails preserves the ARTICLE_PRICE_DETAILS (1.2) /
+	// PRODUCT_PRICE_DETAILS (2005) wrapper grouping, including each wrapper's
+	// validity dates. Use it to pick the currently-valid block or to detect
+	// price calendars (several dated wrappers).
+	PriceDetails []*PriceDetails
+	Mimes        []*Mime
 
 	// UDX carries USER_DEFINED_EXTENSIONS as neutral name/value pairs. Callers
 	// that need raw or nested UDX XML should read the bmecat12/bmecat2005
@@ -246,6 +256,25 @@ type Price struct {
 	Factor     float64
 	LowerBound float64
 	Territory  []string
+}
+
+// PriceDetails is the version-neutral view of an ARTICLE_PRICE_DETAILS (1.2) /
+// PRODUCT_PRICE_DETAILS (2005) wrapper. It groups one or more Prices that share
+// a validity window, preserving the wrapper boundary that Product.Prices
+// flattens away.
+type PriceDetails struct {
+	// ValidStart and ValidEnd are the wrapper's validity dates, read from its
+	// valid_start_date / valid_end_date DATETIME entries. They are nil when the
+	// source document omits the date; unlike the version-specific
+	// ValidStartDate/ValidEndDate accessors, no sentinel default is substituted,
+	// so a consumer can distinguish "no date" from a real bound.
+	ValidStart *time.Time
+	ValidEnd   *time.Time
+	// IsDailyPrice reports whether the wrapper is flagged as a daily price
+	// (DAILY_PRICE).
+	IsDailyPrice bool
+	// Prices are the price blocks grouped under this wrapper.
+	Prices []*Price
 }
 
 // Mime is the version-neutral view of a MIME element.

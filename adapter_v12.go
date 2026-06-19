@@ -2,6 +2,7 @@ package bmecat
 
 import (
 	"io"
+	"time"
 
 	"github.com/olivere/bmecat/bmecat12"
 )
@@ -190,17 +191,12 @@ func convertV12Product(a *bmecat12.Article) *Product {
 		out.Features = append(out.Features, convertV12Features(f))
 	}
 	for _, pd := range a.PriceDetails {
-		for _, p := range pd.Prices {
-			out.Prices = append(out.Prices, &Price{
-				Type:       p.Type,
-				Amount:     p.Amount,
-				Currency:   p.Currency,
-				Tax:        p.Tax,
-				Factor:     p.Factor,
-				LowerBound: p.LowerBound,
-				Territory:  p.Territory,
-			})
+		npd := convertV12PriceDetails(pd)
+		if npd == nil {
+			continue
 		}
+		out.PriceDetails = append(out.PriceDetails, npd)
+		out.Prices = append(out.Prices, npd.Prices...)
 	}
 	if mi := a.MimeInfo; mi != nil {
 		for _, m := range mi.Mimes {
@@ -214,6 +210,50 @@ func convertV12Product(a *bmecat12.Article) *Product {
 		}
 	}
 	return out
+}
+
+func convertV12PriceDetails(pd *bmecat12.ArticlePriceDetails) *PriceDetails {
+	if pd == nil {
+		return nil
+	}
+	out := &PriceDetails{
+		ValidStart:   v12ValidDate(pd.Dates, bmecat12.DateTimeValidStartDate),
+		ValidEnd:     v12ValidDate(pd.Dates, bmecat12.DateTimeValidEndDate),
+		IsDailyPrice: pd.IsDailyPrice(),
+	}
+	for _, p := range pd.Prices {
+		if p == nil {
+			continue
+		}
+		out.Prices = append(out.Prices, &Price{
+			Type:       p.Type,
+			Amount:     p.Amount,
+			Currency:   p.Currency,
+			Tax:        p.Tax,
+			Factor:     p.Factor,
+			LowerBound: p.LowerBound,
+			Territory:  p.Territory,
+		})
+	}
+	return out
+}
+
+// v12ValidDate returns the parsed value of the first DATETIME of the given type,
+// or nil when it is absent or unparseable. Unlike ArticlePriceDetails'
+// ValidStartDate/ValidEndDate, it does not substitute a sentinel default, so the
+// neutral model can distinguish "no date" from a real bound.
+func v12ValidDate(dates []*bmecat12.DateTime, typ string) *time.Time {
+	for _, d := range dates {
+		if d == nil || d.Type != typ {
+			continue
+		}
+		t, err := d.Time()
+		if err != nil {
+			return nil
+		}
+		return &t
+	}
+	return nil
 }
 
 func convertV12Features(f *bmecat12.ArticleFeatures) *Features {

@@ -73,7 +73,10 @@ func main() {
 
 The neutral model exposes the fields 1.2 and 2005 share; in particular
 `Product.GTIN` unifies the 1.2 `EAN` and 2005 `INTERNATIONAL_PID` elements.
-Runnable examples are in the
+Prices come both flattened (`Product.Prices`) and grouped by their
+`ARTICLE_PRICE_DETAILS` / `PRODUCT_PRICE_DETAILS` wrapper with validity dates
+(`Product.PriceDetails`), so you can pick the currently-valid block or spot a
+price calendar. Runnable examples are in the
 [package documentation](https://pkg.go.dev/github.com/olivere/bmecat#pkg-examples).
 
 To gate on the document-level transaction — for example to accept only full
