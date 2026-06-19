@@ -24,9 +24,10 @@ func transactionToV2005(t Transaction) bmecat2005.Transaction {
 // CatalogWriter contract that bmecat2005.Writer.Do drives, converting each
 // product on the fly.
 type v2005CatalogWriter struct {
-	tx          bmecat2005.Transaction
-	prevVersion int
-	neutral     CatalogWriter
+	tx             bmecat2005.Transaction
+	prevVersion    int
+	neutral        CatalogWriter
+	classification *ClassificationSystem
 }
 
 func (c *v2005CatalogWriter) Transaction() bmecat2005.Transaction { return c.tx }
@@ -43,9 +44,12 @@ func (c *v2005CatalogWriter) Language() string {
 	return ""
 }
 
-// ClassificationSystem returns nil: the neutral model has no classification
-// system, so the neutral writer does not emit CLASSIFICATION_SYSTEM.
-func (c *v2005CatalogWriter) ClassificationSystem() *bmecat2005.ClassificationSystem { return nil }
+// ClassificationSystem converts the neutral classification system configured on
+// the Writer to the bmecat2005 type, or returns nil to omit CLASSIFICATION_SYSTEM
+// when none was configured (or it carries no groups).
+func (c *v2005CatalogWriter) ClassificationSystem() *bmecat2005.ClassificationSystem {
+	return neutralClassificationSystemToV2005(c.classification)
+}
 
 // Products bridges the neutral product stream to the bmecat2005 product stream:
 // it reads neutral products from the caller's channel, converts each to a
@@ -108,6 +112,45 @@ func (c *v2005CatalogWriter) Products(ctx context.Context) (<-chan *bmecat2005.P
 		}
 	}()
 	return out, errc
+}
+
+// neutralClassificationSystemToV2005 converts the neutral classification system
+// to the bmecat2005 type. It returns nil for a nil or blank system, so the
+// writer omits CLASSIFICATION_SYSTEM exactly as it does for a native bmecat2005
+// source.
+func neutralClassificationSystemToV2005(cs *ClassificationSystem) *bmecat2005.ClassificationSystem {
+	if cs.IsBlank() {
+		return nil
+	}
+	out := &bmecat2005.ClassificationSystem{
+		Name:        cs.Name,
+		FullName:    cs.FullName,
+		Version:     cs.Version,
+		Description: cs.Description,
+		Levels:      cs.Levels,
+	}
+	for _, ln := range cs.LevelNames {
+		if ln == nil {
+			continue
+		}
+		out.LevelNames = append(out.LevelNames, &bmecat2005.ClassificationSystemLevelName{
+			Level: ln.Level,
+			Value: ln.Name,
+		})
+	}
+	for _, g := range cs.Groups {
+		if g == nil {
+			continue
+		}
+		out.Groups = append(out.Groups, &bmecat2005.ClassificationGroup{
+			Type:        g.Type,
+			ID:          g.ID,
+			Name:        g.Name,
+			Description: g.Description,
+			ParentID:    g.ParentID,
+		})
+	}
+	return out
 }
 
 func neutralHeaderToV2005(h *Header) *bmecat2005.Header {

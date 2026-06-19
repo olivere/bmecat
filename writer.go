@@ -52,11 +52,12 @@ type CatalogWriter interface {
 // directly. The writer also does not emit catalog-group mappings, mirroring the
 // version writers, which do not write them either.
 type Writer struct {
-	w           io.Writer
-	version     Version
-	transaction Transaction
-	prevVersion int
-	indent      string
+	w              io.Writer
+	version        Version
+	transaction    Transaction
+	prevVersion    int
+	indent         string
+	classification *ClassificationSystem
 }
 
 // NewWriter creates a Writer over w. By default it emits BMEcat 1.2 with a
@@ -107,6 +108,17 @@ func WithPreviousVersion(v int) WriterOption {
 func WithIndent(indent string) WriterOption {
 	return func(w *Writer) {
 		w.indent = indent
+	}
+}
+
+// WithClassificationSystem sets the CLASSIFICATION_SYSTEM the writer emits
+// before the product stream. It is emitted only for a NewCatalog transaction,
+// and a nil or blank (no groups) system is omitted, mirroring the bmecat12 /
+// bmecat2005 writers. Because it is supplied as configuration rather than over
+// the product channel, it works the same way for Do and WriteFunc.
+func WithClassificationSystem(cs *ClassificationSystem) WriterOption {
+	return func(w *Writer) {
+		w.classification = cs
 	}
 }
 
@@ -194,18 +206,20 @@ func (c *funcCatalogWriter) Products(ctx context.Context) (<-chan *Product, <-ch
 
 func (w *Writer) writeV12(ctx context.Context, cw CatalogWriter) error {
 	adapter := &v12CatalogWriter{
-		tx:          transactionToV12(w.transaction),
-		prevVersion: w.prevVersion,
-		neutral:     cw,
+		tx:             transactionToV12(w.transaction),
+		prevVersion:    w.prevVersion,
+		neutral:        cw,
+		classification: w.classification,
 	}
 	return bmecat12.NewWriter(w.w, bmecat12.WithIndent(w.indent)).Do(ctx, adapter)
 }
 
 func (w *Writer) writeV2005(ctx context.Context, cw CatalogWriter) error {
 	adapter := &v2005CatalogWriter{
-		tx:          transactionToV2005(w.transaction),
-		prevVersion: w.prevVersion,
-		neutral:     cw,
+		tx:             transactionToV2005(w.transaction),
+		prevVersion:    w.prevVersion,
+		neutral:        cw,
+		classification: w.classification,
 	}
 	return bmecat2005.NewWriter(w.w, bmecat2005.WithIndent(w.indent)).Do(ctx, adapter)
 }

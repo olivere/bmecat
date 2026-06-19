@@ -312,3 +312,38 @@ type ClassificationGroup struct {
 
 func (cg *ClassificationGroup) IsNode() bool { return cg.Type == "node" }
 func (cg *ClassificationGroup) IsLeaf() bool { return cg.Type == "leaf" }
+
+// ClassificationSystem is the version-neutral view of a CLASSIFICATION_SYSTEM
+// element: the classification (e.g. eCl@ss or a supplier UDF system) and its
+// tree of ClassificationGroups. Unlike the streamed product list it is bounded
+// and known up front, so the write path takes it as Writer configuration via
+// WithClassificationSystem rather than over a channel; Writer emits it before
+// the product stream in a T_NEW_CATALOG document.
+//
+// It carries the fields BMEcat 1.2 and 2005 share. Group-level details the
+// neutral ClassificationGroup does not model (the level attribute, synonyms)
+// are not emitted; callers that need them should use the bmecat12 / bmecat2005
+// packages directly.
+type ClassificationSystem struct {
+	Name        string
+	FullName    string
+	Version     string
+	Description string
+	Levels      int
+	LevelNames  []*ClassificationSystemLevelName
+	Groups      []*ClassificationGroup
+}
+
+// IsBlank reports whether the system carries no groups. A blank system is
+// omitted by the writer, mirroring the bmecat12 / bmecat2005 behavior.
+func (cs *ClassificationSystem) IsBlank() bool {
+	return cs == nil || len(cs.Groups) == 0
+}
+
+// ClassificationSystemLevelName is the version-neutral view of a
+// CLASSIFICATION_SYSTEM_LEVEL_NAME element: the human-readable name of one
+// level in the classification hierarchy.
+type ClassificationSystemLevelName struct {
+	Level int
+	Name  string
+}
