@@ -47,6 +47,9 @@ func (t Transaction) dtd() string {
 
 // CatalogWriter specifies the contract that users of Writer have to
 // implement to allow writing a BMEcat file.
+//
+// Implement Products with the StreamProducts helper to stream products from a
+// pull-style producer and avoid hand-rolling the channel bookkeeping.
 type CatalogWriter interface {
 	Transaction() Transaction
 	Language() string
