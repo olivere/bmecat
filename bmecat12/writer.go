@@ -29,6 +29,9 @@ func (t Transaction) String() string {
 
 // CatalogWriter specifies the contract that users of Writer have to
 // implement to allow writing a BMEcat file.
+//
+// Implement Articles with the StreamArticles helper to stream articles from a
+// pull-style producer and avoid hand-rolling the channel bookkeeping.
 type CatalogWriter interface {
 	Transaction() Transaction
 	Language() string

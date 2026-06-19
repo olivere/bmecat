@@ -168,9 +168,6 @@ func (c *funcCatalogWriter) Products(ctx context.Context) (<-chan *Product, <-ch
 	out := make(chan *Product)
 	errc := make(chan error, 1)
 	go func() {
-		// The error (if any) is sent before out is closed: errc <- err runs
-		// before the deferred close, satisfying the CatalogWriter contract.
-		defer close(out)
 		yield := func(p *Product) error {
 			if p == nil {
 				return nil
@@ -182,9 +179,15 @@ func (c *funcCatalogWriter) Products(ctx context.Context) (<-chan *Product, <-ch
 				return ctx.Err()
 			}
 		}
+		// On error, errc receives it and out is left open: Do's product loop
+		// returns via the error channel, and leaving out open keeps a clean EOF
+		// from racing the error in that select. out is closed only on clean
+		// completion, when no error is sent.
 		if err := c.produce(yield); err != nil {
 			errc <- err
+			return
 		}
+		close(out)
 	}()
 	return out, errc
 }
