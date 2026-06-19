@@ -51,6 +51,18 @@ func (c *sliceCatalogWriter) Products(ctx context.Context) (<-chan *bmecat.Produ
 // meaningful (no nil-vs-empty-slice ambiguity). QuantityMax is left zero because
 // BMEcat 1.2 has no QUANTITY_MAX; it is covered separately.
 func fullProduct() *bmecat.Product {
+	// price is shared between the flattened Prices view and the PriceDetails
+	// wrapper so a write→read round trip reproduces both: the reader rebuilds
+	// Prices by flattening the wrappers it reads back.
+	price := &bmecat.Price{
+		Type:       "net_customer",
+		Amount:     9.99,
+		Currency:   "EUR",
+		Tax:        wFloat(0.19),
+		Factor:     1,
+		LowerBound: 1,
+		Territory:  []string{"DE"},
+	}
 	return &bmecat.Product{
 		ID:                      "1000",
 		GTIN:                    "1234567890123",
@@ -82,15 +94,8 @@ func fullProduct() *bmecat.Product {
 		PriceQuantity:    1,
 		QuantityMin:      1,
 		QuantityInterval: 1,
-		Prices: []*bmecat.Price{{
-			Type:       "net_customer",
-			Amount:     9.99,
-			Currency:   "EUR",
-			Tax:        wFloat(0.19),
-			Factor:     1,
-			LowerBound: 1,
-			Territory:  []string{"DE"},
-		}},
+		Prices:           []*bmecat.Price{price},
+		PriceDetails:     []*bmecat.PriceDetails{{Prices: []*bmecat.Price{price}}},
 		Mimes: []*bmecat.Mime{{
 			Type: "image/jpeg", Source: "img.jpg", Descr: "Image", Purpose: "normal", Order: 1,
 		}},

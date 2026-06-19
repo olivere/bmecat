@@ -179,9 +179,7 @@ func neutralProductToV2005(p *Product) *bmecat2005.Product {
 	for _, f := range p.Features {
 		prod.Features = append(prod.Features, neutralFeaturesToV2005(f))
 	}
-	if prices := neutralPricesToV2005(p.Prices); prices != nil {
-		prod.PriceDetails = []*bmecat2005.ProductPriceDetails{{Prices: prices}}
-	}
+	prod.PriceDetails = neutralPriceDetailsToV2005(p)
 	if mi := neutralMimesToV2005(p.Mimes); mi != nil {
 		prod.MimeInfo = mi
 	}
@@ -228,6 +226,49 @@ func neutralFeaturesToV2005(f *Features) *bmecat2005.ProductFeatures {
 		})
 	}
 	return out
+}
+
+// neutralPriceDetailsToV2005 builds the PRODUCT_PRICE_DETAILS wrappers for a
+// product. When the product carries PriceDetails it emits one wrapper per
+// entry, preserving validity dates and grouping; otherwise it falls back to the
+// flattened Prices in a single wrapper, so callers that only set Prices keep
+// the previous behavior. It returns nil when the product has no prices at all.
+func neutralPriceDetailsToV2005(p *Product) []*bmecat2005.ProductPriceDetails {
+	if len(p.PriceDetails) > 0 {
+		var out []*bmecat2005.ProductPriceDetails
+		for _, pd := range p.PriceDetails {
+			if pd == nil {
+				continue
+			}
+			out = append(out, &bmecat2005.ProductPriceDetails{
+				Dates:            validDatesToV2005(pd),
+				DailyPriceString: dailyPriceString(pd.IsDailyPrice),
+				Prices:           neutralPricesToV2005(pd.Prices),
+			})
+		}
+		return out
+	}
+	if prices := neutralPricesToV2005(p.Prices); prices != nil {
+		return []*bmecat2005.ProductPriceDetails{{Prices: prices}}
+	}
+	return nil
+}
+
+// validDatesToV2005 builds the DATETIME entries for a wrapper's validity dates,
+// omitting any that are unset.
+func validDatesToV2005(pd *PriceDetails) []*bmecat2005.DateTime {
+	var dates []*bmecat2005.DateTime
+	if pd.ValidStart != nil {
+		if dt := bmecat2005.NewDateTime(bmecat2005.DateTimeValidStartDate, *pd.ValidStart); dt != nil {
+			dates = append(dates, dt)
+		}
+	}
+	if pd.ValidEnd != nil {
+		if dt := bmecat2005.NewDateTime(bmecat2005.DateTimeValidEndDate, *pd.ValidEnd); dt != nil {
+			dates = append(dates, dt)
+		}
+	}
+	return dates
 }
 
 func neutralPricesToV2005(prices []*Price) []*bmecat2005.ProductPrice {

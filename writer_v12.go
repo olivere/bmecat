@@ -174,9 +174,7 @@ func neutralProductToV12(p *Product) *bmecat12.Article {
 	for _, f := range p.Features {
 		a.Features = append(a.Features, neutralFeaturesToV12(f))
 	}
-	if prices := neutralPricesToV12(p.Prices); prices != nil {
-		a.PriceDetails = []*bmecat12.ArticlePriceDetails{{Prices: prices}}
-	}
+	a.PriceDetails = neutralPriceDetailsToV12(p)
 	if mi := neutralMimesToV12(p.Mimes); mi != nil {
 		a.MimeInfo = mi
 	}
@@ -221,6 +219,49 @@ func neutralFeaturesToV12(f *Features) *bmecat12.ArticleFeatures {
 		})
 	}
 	return out
+}
+
+// neutralPriceDetailsToV12 builds the ARTICLE_PRICE_DETAILS wrappers for a
+// product. When the product carries PriceDetails it emits one wrapper per
+// entry, preserving validity dates and grouping; otherwise it falls back to the
+// flattened Prices in a single wrapper, so callers that only set Prices keep
+// the previous behavior. It returns nil when the product has no prices at all.
+func neutralPriceDetailsToV12(p *Product) []*bmecat12.ArticlePriceDetails {
+	if len(p.PriceDetails) > 0 {
+		var out []*bmecat12.ArticlePriceDetails
+		for _, pd := range p.PriceDetails {
+			if pd == nil {
+				continue
+			}
+			out = append(out, &bmecat12.ArticlePriceDetails{
+				Dates:            validDatesToV12(pd),
+				DailyPriceString: dailyPriceString(pd.IsDailyPrice),
+				Prices:           neutralPricesToV12(pd.Prices),
+			})
+		}
+		return out
+	}
+	if prices := neutralPricesToV12(p.Prices); prices != nil {
+		return []*bmecat12.ArticlePriceDetails{{Prices: prices}}
+	}
+	return nil
+}
+
+// validDatesToV12 builds the DATETIME entries for a wrapper's validity dates,
+// omitting any that are unset.
+func validDatesToV12(pd *PriceDetails) []*bmecat12.DateTime {
+	var dates []*bmecat12.DateTime
+	if pd.ValidStart != nil {
+		if dt := bmecat12.NewDateTime(bmecat12.DateTimeValidStartDate, *pd.ValidStart); dt != nil {
+			dates = append(dates, dt)
+		}
+	}
+	if pd.ValidEnd != nil {
+		if dt := bmecat12.NewDateTime(bmecat12.DateTimeValidEndDate, *pd.ValidEnd); dt != nil {
+			dates = append(dates, dt)
+		}
+	}
+	return dates
 }
 
 func neutralPricesToV12(prices []*Price) []*bmecat12.ArticlePrice {

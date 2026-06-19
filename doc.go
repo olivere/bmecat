@@ -23,6 +23,14 @@ The neutral model exposes the fields the two versions have in common. In
 particular [Product.GTIN] unifies the 1.2 EAN element and the 2005
 INTERNATIONAL_PID element behind a single accessor.
 
+Prices are exposed two ways. [Product.Prices] is a flat list of every price
+block, convenient when the grouping does not matter. [Product.PriceDetails]
+preserves the ARTICLE_PRICE_DETAILS / PRODUCT_PRICE_DETAILS wrapper grouping,
+including each wrapper's validity dates ([PriceDetails.ValidStart] /
+[PriceDetails.ValidEnd], nil when the source omits them) — so a consumer can
+pick the currently-valid block or detect a price calendar (several dated
+wrappers).
+
 A caller that needs to gate on the document-level transaction — for example to
 reject incremental updates and only accept full catalogs — can detect it cheaply
 in phase 1, mirroring [Reader.DetectVersion]:
