@@ -48,6 +48,20 @@ boundary:
 	w := bmecat.NewWriter(out, bmecat.WithVersion(bmecat.Version2005))
 	err := w.Do(ctx, catalog) // catalog implements bmecat.CatalogWriter
 
+For most callers, [Writer.WriteFunc] is the ergonomic default: it takes a header
+and a pull-style producer that streams products by calling yield, keeping the
+streaming property while removing the channel bookkeeping the [CatalogWriter]
+interface requires:
+
+	err := w.WriteFunc(ctx, header, func(yield func(*bmecat.Product) error) error {
+		for rows.Next() {
+			if err := yield(buildProduct(rows)); err != nil {
+				return err
+			}
+		}
+		return rows.Err()
+	})
+
 As with reading, writing is streaming — each product is converted and encoded as
 it arrives, so even a very large catalog is never held in memory at once — and
 the neutral model carries only the fields the two versions share, so the output

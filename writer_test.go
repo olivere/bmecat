@@ -291,3 +291,124 @@ func TestWriteContextCancel(t *testing.T) {
 		t.Fatal("want error from canceled context, got nil")
 	}
 }
+
+// TestWriteFuncRoundTrip writes a neutral catalog via the pull-style WriteFunc
+// and reads it back, asserting the model survives unchanged for both versions —
+// the same guarantee TestWriteReadRoundTrip gives the channel-based Do.
+func TestWriteFuncRoundTrip(t *testing.T) {
+	for _, version := range []bmecat.Version{bmecat.Version12, bmecat.Version2005} {
+		t.Run(version.String(), func(t *testing.T) {
+			header := fullHeader()
+			product := fullProduct()
+
+			var buf bytes.Buffer
+			err := bmecat.NewWriter(&buf, bmecat.WithVersion(version)).
+				WriteFunc(context.Background(), header, func(yield func(*bmecat.Product) error) error {
+					return yield(product)
+				})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			c := read(t, buf.String())
+			if c.header == nil {
+				t.Fatal("want header, have nil")
+			}
+			c.header.Version = 0
+			c.header.Transaction = 0
+			c.header.NumberOfProducts = 0
+			c.header.NumberOfCatalogGroups = 0
+			c.header.NumberOfClassificationGroups = 0
+			if !reflect.DeepEqual(header, c.header) {
+				t.Errorf("header round trip mismatch:\nwant %+v\nhave %+v", header, c.header)
+			}
+			if len(c.products) != 1 {
+				t.Fatalf("want one product, have %d", len(c.products))
+			}
+			if !reflect.DeepEqual(product, c.products[0]) {
+				t.Errorf("product round trip mismatch:\nwant %+v\nhave %+v", product, c.products[0])
+			}
+		})
+	}
+}
+
+// TestWriteFuncStreaming streams many products through yield and reads them
+// back, confirming order is preserved across the pull-style bridge.
+func TestWriteFuncStreaming(t *testing.T) {
+	const n = 1000
+	var buf bytes.Buffer
+	err := bmecat.NewWriter(&buf, bmecat.WithVersion(bmecat.Version2005)).
+		WriteFunc(context.Background(), fullHeader(), func(yield func(*bmecat.Product) error) error {
+			for i := range n {
+				p := &bmecat.Product{ID: fmt.Sprintf("P%04d", i), DescriptionShort: "x", OrderUnit: "PCE"}
+				if err := yield(p); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	c := read(t, buf.String())
+	if len(c.products) != n {
+		t.Fatalf("want %d products, have %d", n, len(c.products))
+	}
+	if c.products[0].ID != "P0000" || c.products[n-1].ID != fmt.Sprintf("P%04d", n-1) {
+		t.Errorf("product order not preserved: first %q last %q", c.products[0].ID, c.products[n-1].ID)
+	}
+}
+
+// TestWriteFuncSkipsNil confirms a nil product yielded by the producer is
+// skipped rather than written or panicked on.
+func TestWriteFuncSkipsNil(t *testing.T) {
+	var buf bytes.Buffer
+	err := bmecat.NewWriter(&buf).
+		WriteFunc(context.Background(), fullHeader(), func(yield func(*bmecat.Product) error) error {
+			if err := yield(nil); err != nil {
+				return err
+			}
+			return yield(&bmecat.Product{ID: "1", DescriptionShort: "x", OrderUnit: "PCE"})
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := read(t, buf.String())
+	if len(c.products) != 1 {
+		t.Fatalf("want one product (nil skipped), have %d", len(c.products))
+	}
+}
+
+// TestWriteFuncProducerError confirms an error returned by the producer is
+// returned by WriteFunc.
+func TestWriteFuncProducerError(t *testing.T) {
+	boom := errors.New("producer boom")
+	var buf bytes.Buffer
+	err := bmecat.NewWriter(&buf).
+		WriteFunc(context.Background(), fullHeader(), func(yield func(*bmecat.Product) error) error {
+			if err := yield(fullProduct()); err != nil {
+				return err
+			}
+			return boom
+		})
+	if !errors.Is(err, boom) {
+		t.Fatalf("want producer error, have %v", err)
+	}
+}
+
+// TestWriteFuncContextCancel confirms a canceled context aborts the write and
+// that yield observes the cancellation so the producer can stop.
+func TestWriteFuncContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	var buf bytes.Buffer
+	err := bmecat.NewWriter(&buf).
+		WriteFunc(ctx, fullHeader(), func(yield func(*bmecat.Product) error) error {
+			return yield(fullProduct())
+		})
+	if err == nil {
+		t.Fatal("want error from canceled context, got nil")
+	}
+}

@@ -137,3 +137,42 @@ func ExampleWriter() {
 	// Catalog "Spring Catalog" (BMEcat 2005)
 	// - 1000: Widget (GTIN 1234567890123)
 }
+
+// ExampleWriter_writeFunc writes the same catalog with the pull-style WriteFunc:
+// the producer streams products by calling yield, with no channels to manage.
+func ExampleWriter_writeFunc() {
+	header := &bmecat.Header{
+		Catalog:  &bmecat.Catalog{Language: "deu", ID: "CAT1", Version: "1.0", Name: "Spring Catalog"},
+		Supplier: &bmecat.Supplier{Name: "SupplyCo"},
+	}
+	products := []*bmecat.Product{
+		{
+			ID:               "1000",
+			GTIN:             "1234567890123",
+			DescriptionShort: "Widget",
+			OrderUnit:        "PCE",
+			Prices:           []*bmecat.Price{{Type: "net_customer", Amount: 9.99, Currency: "EUR"}},
+		},
+	}
+
+	var buf strings.Builder
+	w := bmecat.NewWriter(&buf, bmecat.WithVersion(bmecat.Version2005))
+	err := w.WriteFunc(context.Background(), header, func(yield func(*bmecat.Product) error) error {
+		for _, p := range products {
+			if err := yield(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if err := bmecat.NewReader(strings.NewReader(buf.String())).Do(context.Background(), catalogPrinter{}); err != nil {
+		panic(err)
+	}
+	// Output:
+	// Catalog "Spring Catalog" (BMEcat 2005)
+	// - 1000: Widget (GTIN 1234567890123)
+}

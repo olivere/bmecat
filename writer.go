@@ -28,6 +28,10 @@ import (
 //
 // Sending more than one error, or sending the error only after closing the
 // products channel, is a contract violation and may cause the error to be lost.
+//
+// This channel contract is the low-level API. Most callers should prefer
+// Writer.WriteFunc, a pull-style producer that keeps the streaming property but
+// removes the channel bookkeeping entirely.
 type CatalogWriter interface {
 	// Header returns the catalog header, or nil to omit the HEADER element.
 	Header() *Header
@@ -122,6 +126,67 @@ func (w *Writer) Do(ctx context.Context, cw CatalogWriter) error {
 	default:
 		return w.writeV12(ctx, cw)
 	}
+}
+
+// WriteFunc writes a neutral catalog using a pull-style producer instead of the
+// channel pair CatalogWriter requires. It is the ergonomic default for the
+// write path: produce is called once and streams products by calling yield once
+// per product, mirroring the range-over-func iterators in iter.Seq.
+//
+// yield forwards the product downstream and returns the first downstream error —
+// an encoding failure or a canceled context — so the producer can stop early:
+//
+//	err := w.WriteFunc(ctx, header, func(yield func(*bmecat.Product) error) error {
+//		for rows.Next() {
+//			if err := yield(buildProduct(rows)); err != nil {
+//				return err // downstream failed; stop producing
+//			}
+//		}
+//		return rows.Err()
+//	})
+//
+// Returning a non-nil error from produce — whether from yield or the producer
+// itself, such as rows.Err — stops the write and is returned from WriteFunc.
+// A nil product is skipped. There are no channels to buffer, no error-ordering
+// rules, and no goroutine for the caller to manage; the streaming, memory-flat
+// property of Do is preserved.
+func (w *Writer) WriteFunc(ctx context.Context, header *Header, produce func(yield func(*Product) error) error) error {
+	return w.Do(ctx, &funcCatalogWriter{header: header, produce: produce})
+}
+
+// funcCatalogWriter adapts a pull-style producer to the channel-based
+// CatalogWriter contract, confining the channel bookkeeping (buffered error
+// channel, error-before-close ordering, ctx.Done select) to one place.
+type funcCatalogWriter struct {
+	header  *Header
+	produce func(yield func(*Product) error) error
+}
+
+func (c *funcCatalogWriter) Header() *Header { return c.header }
+
+func (c *funcCatalogWriter) Products(ctx context.Context) (<-chan *Product, <-chan error) {
+	out := make(chan *Product)
+	errc := make(chan error, 1)
+	go func() {
+		// The error (if any) is sent before out is closed: errc <- err runs
+		// before the deferred close, satisfying the CatalogWriter contract.
+		defer close(out)
+		yield := func(p *Product) error {
+			if p == nil {
+				return nil
+			}
+			select {
+			case out <- p:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		if err := c.produce(yield); err != nil {
+			errc <- err
+		}
+	}()
+	return out, errc
 }
 
 func (w *Writer) writeV12(ctx context.Context, cw CatalogWriter) error {
