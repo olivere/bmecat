@@ -19,13 +19,19 @@ type DateTime struct {
 	TimeZoneString string `xml:"TIMEZONE,omitempty"`
 }
 
+// Time converts the DateTime to a time.Time. When TIMEZONE is set it applies
+// the offset, accepting both the "Z" (UTC) and "±HH:MM" forms that NewDateTime
+// emits; the returned time then carries that offset. When TIMEZONE is empty the
+// wall-clock is interpreted as UTC.
 func (dt DateTime) Time() (time.Time, error) {
 	ts := dt.TimeString
 	if ts == "" {
 		ts = "00:00:00"
 	}
-	// TODO time zone support
-	return time.Parse("2006-01-02 15:04:05", dt.DateString+" "+ts)
+	if dt.TimeZoneString == "" {
+		return time.Parse("2006-01-02 15:04:05", dt.DateString+" "+ts)
+	}
+	return time.Parse("2006-01-02 15:04:05Z07:00", dt.DateString+" "+ts+dt.TimeZoneString)
 }
 
 func NewDateTime(typ string, dt time.Time) *DateTime {
