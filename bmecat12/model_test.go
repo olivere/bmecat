@@ -166,6 +166,40 @@ func TestDateTimeTime(t *testing.T) {
 	if _, err := (DateTime{DateString: "bad"}).Time(); err == nil {
 		t.Error("Time() error = nil, want non-nil for invalid date")
 	}
+
+	// Explicit UTC timezone ("Z").
+	dt = DateTime{DateString: "2020-06-15", TimeString: "13:45:30", TimeZoneString: "Z"}
+	got, err = dt.Time()
+	if err != nil {
+		t.Fatalf("Time() error: %v", err)
+	}
+	if want := time.Date(2020, 6, 15, 13, 45, 30, 0, time.UTC); !got.Equal(want) {
+		t.Errorf("Time() = %v, want %v", got, want)
+	}
+
+	// Non-UTC offset is applied rather than ignored.
+	dt = DateTime{DateString: "2020-06-15", TimeString: "13:45:30", TimeZoneString: "-04:00"}
+	got, err = dt.Time()
+	if err != nil {
+		t.Fatalf("Time() error: %v", err)
+	}
+	if want := time.Date(2020, 6, 15, 17, 45, 30, 0, time.UTC); !got.Equal(want) {
+		t.Errorf("Time() = %v, want %v", got, want)
+	}
+	if got.Format(time.RFC3339) != "2020-06-15T13:45:30-04:00" {
+		t.Errorf("Time() = %q, want offset preserved", got.Format(time.RFC3339))
+	}
+
+	// A malformed timezone is ignored, not treated as an error: the date still
+	// parses as UTC rather than degrading to an error/default.
+	dt = DateTime{DateString: "2020-06-15", TimeString: "13:45:30", TimeZoneString: "+0200"}
+	got, err = dt.Time()
+	if err != nil {
+		t.Fatalf("Time() error: %v", err)
+	}
+	if want := time.Date(2020, 6, 15, 13, 45, 30, 0, time.UTC); !got.Equal(want) {
+		t.Errorf("Time() = %v, want %v", got, want)
+	}
 }
 
 func TestAgreementStartEndDate(t *testing.T) {

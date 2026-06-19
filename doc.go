@@ -29,7 +29,10 @@ preserves the ARTICLE_PRICE_DETAILS / PRODUCT_PRICE_DETAILS wrapper grouping,
 including each wrapper's validity dates ([PriceDetails.ValidStart] /
 [PriceDetails.ValidEnd], nil when the source omits them) — so a consumer can
 pick the currently-valid block or detect a price calendar (several dated
-wrappers).
+wrappers). [Product.CurrentPriceDetails] selects the wrapper valid at a given
+time, [Product.ValidPriceDetails] returns every match, and
+[PriceDetails.PriceFor] resolves the graduated/scale tier for an order
+quantity.
 
 A caller that needs to gate on the document-level transaction — for example to
 reject incremental updates and only accept full catalogs — can detect it cheaply
