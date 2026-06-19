@@ -28,7 +28,7 @@ type ClassificationSystemLevelName struct {
 	XMLName xml.Name `xml:"CLASSIFICATION_SYSTEM_LEVEL_NAME"`
 
 	Level int    `xml:"level,attr"`
-	Value string `xml:",innerxml"`
+	Value string `xml:",chardata"`
 }
 
 type ClassificationGroup struct {

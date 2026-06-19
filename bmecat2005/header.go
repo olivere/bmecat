@@ -48,7 +48,7 @@ const (
 
 type PriceFlag struct {
 	Type  string `xml:"type,attr"`
-	Value string `xml:",innerxml"`
+	Value string `xml:",chardata"`
 }
 
 var (

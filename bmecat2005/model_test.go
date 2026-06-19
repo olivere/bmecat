@@ -1,6 +1,8 @@
 package bmecat2005
 
 import (
+	"encoding/xml"
+	"strings"
 	"testing"
 	"time"
 )
@@ -264,5 +266,47 @@ func TestUDXGetNotFound(t *testing.T) {
 	}
 	if _, ok := fields.GetInnerXML("MISSING"); ok {
 		t.Error("GetInnerXML(MISSING) ok = true, want false")
+	}
+}
+
+func TestClassificationSystemLevelNameSpecialCharsRoundTrip(t *testing.T) {
+	const value = "Tools & Co <Main> \"group\""
+	in := ClassificationSystemLevelName{Level: 1, Value: value}
+
+	buf, err := xml.Marshal(&in)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	if strings.Contains(string(buf), "Tools & Co") {
+		t.Errorf("Marshal() produced unescaped output: %s", buf)
+	}
+
+	var out ClassificationSystemLevelName
+	if err := xml.Unmarshal(buf, &out); err != nil {
+		t.Fatalf("Unmarshal() error = %v, xml = %s", err, buf)
+	}
+	if out.Value != value {
+		t.Errorf("Value = %q, want %q", out.Value, value)
+	}
+}
+
+func TestPriceFlagSpecialCharsRoundTrip(t *testing.T) {
+	const value = "true & valid <x>"
+	in := PriceFlag{Type: PriceFlagInclFreight, Value: value}
+
+	buf, err := xml.Marshal(&in)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	if strings.Contains(string(buf), "true & valid") {
+		t.Errorf("Marshal() produced unescaped output: %s", buf)
+	}
+
+	var out PriceFlag
+	if err := xml.Unmarshal(buf, &out); err != nil {
+		t.Fatalf("Unmarshal() error = %v, xml = %s", err, buf)
+	}
+	if out.Value != value {
+		t.Errorf("Value = %q, want %q", out.Value, value)
 	}
 }
