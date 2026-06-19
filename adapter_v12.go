@@ -17,6 +17,10 @@ type v12Adapter struct {
 	classifGroup ClassificationGroupHandler
 	complete     CompletionHandler
 
+	// transaction is the document-level transaction detected in phase 1; it is
+	// stamped onto the neutral Header, which the version-specific Header lacks.
+	transaction Transaction
+
 	// headerErr retains a non-EOF error returned by the neutral HeaderHandler.
 	// The bmecat12 reader currently swallows such errors (see issue #16), so
 	// the facade surfaces it after Do returns to honor the HeaderHandler
@@ -24,8 +28,8 @@ type v12Adapter struct {
 	headerErr error
 }
 
-func newV12Adapter(handler any) *v12Adapter {
-	a := &v12Adapter{}
+func newV12Adapter(handler any, transaction Transaction) *v12Adapter {
+	a := &v12Adapter{transaction: transaction}
 	if h, ok := handler.(HeaderHandler); ok {
 		a.header = h
 	}
@@ -48,7 +52,9 @@ func (a *v12Adapter) HandleHeader(h *bmecat12.Header) error {
 	if a.header == nil {
 		return nil
 	}
-	err := a.header.HandleHeader(convertV12Header(h))
+	hdr := convertV12Header(h)
+	hdr.Transaction = a.transaction
+	err := a.header.HandleHeader(hdr)
 	if err != nil && err != io.EOF {
 		a.headerErr = err
 	}

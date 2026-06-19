@@ -76,6 +76,20 @@ The neutral model exposes the fields 1.2 and 2005 share; in particular
 Runnable examples are in the
 [package documentation](https://pkg.go.dev/github.com/olivere/bmecat#pkg-examples).
 
+To gate on the document-level transaction — for example to accept only full
+catalogs and reject incremental updates — call `DetectTransaction` before `Do`
+(it rewinds, like `DetectVersion`); the same value is also available as
+`Header.Transaction` during a full parse:
+
+```go
+r := bmecat.NewReader(f)
+if tx, err := r.DetectTransaction(); err != nil {
+	return err
+} else if tx.IsUpdate() {
+	return fmt.Errorf("only full catalogs are supported, got %s", tx)
+}
+```
+
 ## Reading a specific version
 
 To work with a single version directly — for raw fidelity, version-specific

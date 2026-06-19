@@ -101,6 +101,52 @@ func (r *Reader) DetectVersion() (Version, error) {
 	}
 }
 
+// DetectTransaction reports the document-level BMEcat transaction without
+// consuming the document for the caller: it seeks back to the start before
+// returning.
+//
+// It mirrors DetectVersion and is the cheap, phase-1 way to gate on the
+// transaction — for example to reject incremental updates (Transaction.IsUpdate)
+// up front, without the full parse that Do performs. The same value is also
+// surfaced on Header.Transaction during Do.
+func (r *Reader) DetectTransaction() (Transaction, error) {
+	if _, err := r.r.Seek(0, io.SeekStart); err != nil {
+		return 0, err
+	}
+	dec := xml.NewDecoder(r.r)
+	dec.CharsetReader = r.charsetReader
+	defer r.r.Seek(0, io.SeekStart)
+
+	var inBMECAT bool
+	for {
+		t, err := dec.Token()
+		if err == io.EOF {
+			return 0, fmt.Errorf("bmecat: no transaction element found")
+		}
+		if err != nil {
+			return 0, err
+		}
+		se, ok := t.(xml.StartElement)
+		if !ok {
+			continue
+		}
+		if !inBMECAT {
+			if se.Name.Local == "BMECAT" {
+				inBMECAT = true
+			}
+			continue
+		}
+		// The transaction element is the first non-HEADER child of BMECAT.
+		if tx, ok := transactionFromElement(se.Name.Local); ok {
+			return tx, nil
+		}
+		// Skip other children (e.g. HEADER) without descending into them.
+		if err := dec.Skip(); err != nil {
+			return 0, err
+		}
+	}
+}
+
 func versionFromString(value string) (Version, error) {
 	switch {
 	case strings.HasPrefix(value, "1.2"):
@@ -132,23 +178,27 @@ func (r *Reader) Do(ctx context.Context, handler any) error {
 	if err != nil {
 		return err
 	}
+	transaction, err := r.DetectTransaction()
+	if err != nil {
+		return err
+	}
 
 	switch version {
 	case Version2005:
-		return r.do2005(ctx, handler)
+		return r.do2005(ctx, handler, transaction)
 	default:
-		return r.do12(ctx, handler)
+		return r.do12(ctx, handler, transaction)
 	}
 }
 
-func (r *Reader) do12(ctx context.Context, handler any) error {
+func (r *Reader) do12(ctx context.Context, handler any, transaction Transaction) error {
 	opts := []bmecat12.ReaderOption{
 		bmecat12.WithCharsetReader(bmecat12.CharsetReaderFunc(r.charsetReader)),
 	}
 	if r.progress != nil {
 		opts = append(opts, bmecat12.WithReaderProgress(bmecat12.ReaderProgress(r.progress)))
 	}
-	adapter := newV12Adapter(handler)
+	adapter := newV12Adapter(handler, transaction)
 	err := bmecat12.NewReader(r.r, opts...).Do(ctx, adapter)
 	if err == nil && adapter.headerErr != nil {
 		// The bmecat12 reader swallows non-EOF HandleHeader errors (#16);
@@ -158,12 +208,12 @@ func (r *Reader) do12(ctx context.Context, handler any) error {
 	return err
 }
 
-func (r *Reader) do2005(ctx context.Context, handler any) error {
+func (r *Reader) do2005(ctx context.Context, handler any, transaction Transaction) error {
 	opts := []bmecat2005.ReaderOption{
 		bmecat2005.WithCharsetReader(bmecat2005.CharsetReaderFunc(r.charsetReader)),
 	}
 	if r.progress != nil {
 		opts = append(opts, bmecat2005.WithReaderProgress(bmecat2005.ReaderProgress(r.progress)))
 	}
-	return bmecat2005.NewReader(r.r, opts...).Do(ctx, newV2005Adapter(handler))
+	return bmecat2005.NewReader(r.r, opts...).Do(ctx, newV2005Adapter(handler, transaction))
 }
