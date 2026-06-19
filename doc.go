@@ -37,9 +37,25 @@ in phase 1, mirroring [Reader.DetectVersion]:
 The same value is also surfaced on [Header.Transaction] during Do, for callers
 that read it as part of a full parse.
 
+# Version-neutral writing
+
+[Writer] is the streaming, write-path counterpart of [Reader]: a caller
+implements a [CatalogWriter] (a header plus a channel of products), selects a
+target version with [WithVersion], and Writer emits a valid BMEcat 1.2 or 2005
+document, converting the neutral model to the version-specific one at the
+boundary:
+
+	w := bmecat.NewWriter(out, bmecat.WithVersion(bmecat.Version2005))
+	err := w.Do(ctx, catalog) // catalog implements bmecat.CatalogWriter
+
+As with reading, writing is streaming — each product is converted and encoded as
+it arrives, so even a very large catalog is never held in memory at once — and
+the neutral model carries only the fields the two versions share, so the output
+covers those common fields.
+
 Callers that need raw, version-specific fidelity (including 2005-only fields
-such as PRODUCT_LOGISTIC_DETAILS, or writing catalogs) can use the
-github.com/olivere/bmecat/bmecat12 and github.com/olivere/bmecat/bmecat2005
+such as PRODUCT_LOGISTIC_DETAILS, or writing version-specific elements) can use
+the github.com/olivere/bmecat/bmecat12 and github.com/olivere/bmecat/bmecat2005
 packages directly.
 */
 package bmecat
