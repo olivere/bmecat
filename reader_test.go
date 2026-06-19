@@ -326,3 +326,103 @@ func TestReadCharset(t *testing.T) {
 		t.Errorf("want decoded catalog name %q, have %q", want, have)
 	}
 }
+
+// updateDoc builds a minimal catalog wrapped in the given transaction element
+// for the given version, so the transaction tests can exercise every
+// (version, transaction) combination.
+func updateDoc(version, txElem string) string {
+	switch version {
+	case "2005":
+		return `<BMECAT version="2005" xmlns="http://www.bmecat.org/bmecat/2005"><HEADER><CATALOG><LANGUAGE>deu</LANGUAGE><CATALOG_ID>C</CATALOG_ID><CATALOG_VERSION>1</CATALOG_VERSION></CATALOG></HEADER><` + txElem + ` prev_version="1"><PRODUCT><SUPPLIER_PID>1</SUPPLIER_PID></PRODUCT></` + txElem + `></BMECAT>`
+	default:
+		return `<BMECAT version="1.2"><HEADER><CATALOG><LANGUAGE>deu</LANGUAGE><CATALOG_ID>C</CATALOG_ID><CATALOG_VERSION>1</CATALOG_VERSION></CATALOG></HEADER><` + txElem + ` prev_version="1"><ARTICLE><SUPPLIER_AID>1</SUPPLIER_AID></ARTICLE></` + txElem + `></BMECAT>`
+	}
+}
+
+// TestDetectTransaction covers option 1 from #29: the phase-1 detector reports
+// the wrapping transaction for both versions and seeks back so a later Do still
+// reads the whole document.
+func TestDetectTransaction(t *testing.T) {
+	tests := []struct {
+		txElem string
+		want   bmecat.Transaction
+	}{
+		{"T_NEW_CATALOG", bmecat.NewCatalog},
+		{"T_UPDATE_PRODUCTS", bmecat.UpdateProducts},
+		{"T_UPDATE_PRICES", bmecat.UpdatePrices},
+	}
+	for _, version := range []string{"1.2", "2005"} {
+		for _, tt := range tests {
+			t.Run(version+"/"+tt.txElem, func(t *testing.T) {
+				r := bmecat.NewReader(bytes.NewReader([]byte(updateDoc(version, tt.txElem))))
+				have, err := r.DetectTransaction()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if have != tt.want {
+					t.Fatalf("want transaction %v, have %v", tt.want, have)
+				}
+				// DetectTransaction must rewind: a subsequent Do still sees the product.
+				c := &collector{}
+				if err := r.Do(context.Background(), c); err != nil {
+					t.Fatal(err)
+				}
+				if len(c.products) != 1 {
+					t.Errorf("want one product after detect+read, have %d", len(c.products))
+				}
+			})
+		}
+	}
+}
+
+// TestDetectTransactionErrors confirms a document without a transaction element
+// reports an error rather than a bogus zero value.
+func TestDetectTransactionErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		doc  string
+	}{
+		{"no BMECAT element", `<?xml version="1.0"?><ROOT></ROOT>`},
+		{"header only, no transaction", `<BMECAT version="1.2"><HEADER></HEADER></BMECAT>`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := bmecat.NewReader(bytes.NewReader([]byte(tt.doc)))
+			if _, err := r.DetectTransaction(); err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+		})
+	}
+}
+
+// TestReadHeaderTransaction covers option 2 from #29: the transaction is
+// surfaced on the neutral Header during Do, for both versions.
+func TestReadHeaderTransaction(t *testing.T) {
+	for _, version := range []string{"1.2", "2005"} {
+		t.Run(version, func(t *testing.T) {
+			c := read(t, updateDoc(version, "T_UPDATE_PRICES"))
+			if c.header == nil {
+				t.Fatal("want header, have nil")
+			}
+			if want, have := bmecat.UpdatePrices, c.header.Transaction; want != have {
+				t.Errorf("want Header.Transaction %v, have %v", want, have)
+			}
+			if !c.header.Transaction.IsUpdate() {
+				t.Error("want IsUpdate true for T_UPDATE_PRICES")
+			}
+		})
+	}
+}
+
+// TestTransactionString pins the element names a Transaction stringifies to.
+func TestTransactionString(t *testing.T) {
+	for tx, want := range map[bmecat.Transaction]string{
+		bmecat.NewCatalog:     "T_NEW_CATALOG",
+		bmecat.UpdateProducts: "T_UPDATE_PRODUCTS",
+		bmecat.UpdatePrices:   "T_UPDATE_PRICES",
+	} {
+		if have := tx.String(); have != want {
+			t.Errorf("want %q, have %q", want, have)
+		}
+	}
+}

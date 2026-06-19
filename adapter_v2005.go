@@ -12,10 +12,14 @@ type v2005Adapter struct {
 	catalogGroup CatalogGroupHandler
 	classifGroup ClassificationGroupHandler
 	complete     CompletionHandler
+
+	// transaction is the document-level transaction detected in phase 1; it is
+	// stamped onto the neutral Header, which the version-specific Header lacks.
+	transaction Transaction
 }
 
-func newV2005Adapter(handler any) *v2005Adapter {
-	a := &v2005Adapter{}
+func newV2005Adapter(handler any, transaction Transaction) *v2005Adapter {
+	a := &v2005Adapter{transaction: transaction}
 	if h, ok := handler.(HeaderHandler); ok {
 		a.header = h
 	}
@@ -38,7 +42,9 @@ func (a *v2005Adapter) HandleHeader(h *bmecat2005.Header) error {
 	if a.header == nil {
 		return nil
 	}
-	return a.header.HandleHeader(convertV2005Header(h))
+	hdr := convertV2005Header(h)
+	hdr.Transaction = a.transaction
+	return a.header.HandleHeader(hdr)
 }
 
 func (a *v2005Adapter) HandleProduct(p *bmecat2005.Product) error {

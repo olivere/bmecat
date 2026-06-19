@@ -25,11 +25,65 @@ func (v Version) String() string {
 	}
 }
 
+// Transaction identifies the document-level BMEcat transaction: a full catalog
+// (NewCatalog) or an incremental update (UpdateProducts / UpdatePrices). It is
+// the wrapping T_NEW_CATALOG / T_UPDATE_PRODUCTS / T_UPDATE_PRICES element, not
+// the per-product Product.Mode.
+type Transaction int
+
+const (
+	// NewCatalog is a full catalog: T_NEW_CATALOG.
+	NewCatalog Transaction = iota
+	// UpdateProducts is an incremental product update: T_UPDATE_PRODUCTS.
+	UpdateProducts
+	// UpdatePrices is an incremental price update: T_UPDATE_PRICES.
+	UpdatePrices
+)
+
+// String returns the transaction element name as it appears in a BMEcat
+// document, e.g. "T_NEW_CATALOG".
+func (t Transaction) String() string {
+	switch t {
+	case UpdateProducts:
+		return "T_UPDATE_PRODUCTS"
+	case UpdatePrices:
+		return "T_UPDATE_PRICES"
+	default:
+		return "T_NEW_CATALOG"
+	}
+}
+
+// IsUpdate reports whether the transaction is an incremental update
+// (T_UPDATE_PRODUCTS or T_UPDATE_PRICES) rather than a full catalog. A consumer
+// that only supports full catalogs can reject updates with this.
+func (t Transaction) IsUpdate() bool {
+	return t == UpdateProducts || t == UpdatePrices
+}
+
+// transactionFromElement maps a transaction start-element name onto a
+// Transaction. The second result is false for any other element.
+func transactionFromElement(name string) (Transaction, bool) {
+	switch name {
+	case "T_NEW_CATALOG":
+		return NewCatalog, true
+	case "T_UPDATE_PRODUCTS":
+		return UpdateProducts, true
+	case "T_UPDATE_PRICES":
+		return UpdatePrices, true
+	default:
+		return 0, false
+	}
+}
+
 // Header is the version-neutral view of a BMEcat HEADER. It exposes the fields
 // that 1.2 and 2005 have in common.
 type Header struct {
 	// Version is the BMEcat version the document was read from.
 	Version Version
+	// Transaction is the document-level transaction the products are wrapped
+	// in: NewCatalog for a full catalog, UpdateProducts / UpdatePrices for an
+	// incremental update. It is distinct from the per-product Product.Mode.
+	Transaction Transaction
 
 	GeneratorInfo string
 	Catalog       *Catalog

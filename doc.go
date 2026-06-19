@@ -23,6 +23,20 @@ The neutral model exposes the fields the two versions have in common. In
 particular [Product.GTIN] unifies the 1.2 EAN element and the 2005
 INTERNATIONAL_PID element behind a single accessor.
 
+A caller that needs to gate on the document-level transaction — for example to
+reject incremental updates and only accept full catalogs — can detect it cheaply
+in phase 1, mirroring [Reader.DetectVersion]:
+
+	switch tx, err := r.DetectTransaction(); {
+	case err != nil:
+		return err
+	case tx.IsUpdate():
+		return fmt.Errorf("only full catalogs are supported, got %s", tx)
+	}
+
+The same value is also surfaced on [Header.Transaction] during Do, for callers
+that read it as part of a full parse.
+
 Callers that need raw, version-specific fidelity (including 2005-only fields
 such as PRODUCT_LOGISTIC_DETAILS, or writing catalogs) can use the
 github.com/olivere/bmecat/bmecat12 and github.com/olivere/bmecat/bmecat2005
