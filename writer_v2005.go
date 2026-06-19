@@ -1,0 +1,278 @@
+package bmecat
+
+import (
+	"context"
+
+	"github.com/olivere/bmecat/bmecat2005"
+)
+
+// transactionToV2005 maps the neutral Transaction onto the bmecat2005
+// Transaction. As with transactionToV12, the conversion is explicit so the
+// packages stay decoupled from each other's iota order.
+func transactionToV2005(t Transaction) bmecat2005.Transaction {
+	switch t {
+	case UpdateProducts:
+		return bmecat2005.UpdateProducts
+	case UpdatePrices:
+		return bmecat2005.UpdatePrices
+	default:
+		return bmecat2005.NewCatalog
+	}
+}
+
+// v2005CatalogWriter adapts a neutral CatalogWriter to the bmecat2005
+// CatalogWriter contract that bmecat2005.Writer.Do drives, converting each
+// product on the fly.
+type v2005CatalogWriter struct {
+	tx          bmecat2005.Transaction
+	prevVersion int
+	neutral     CatalogWriter
+}
+
+func (c *v2005CatalogWriter) Transaction() bmecat2005.Transaction { return c.tx }
+func (c *v2005CatalogWriter) PreviousVersion() int                { return c.prevVersion }
+
+func (c *v2005CatalogWriter) Header() *bmecat2005.Header {
+	return neutralHeaderToV2005(c.neutral.Header())
+}
+
+func (c *v2005CatalogWriter) Language() string {
+	if h := c.neutral.Header(); h != nil && h.Catalog != nil {
+		return h.Catalog.Language
+	}
+	return ""
+}
+
+// ClassificationSystem returns nil: the neutral model has no classification
+// system, so the neutral writer does not emit CLASSIFICATION_SYSTEM.
+func (c *v2005CatalogWriter) ClassificationSystem() *bmecat2005.ClassificationSystem { return nil }
+
+// Products bridges the neutral product stream to the bmecat2005 product stream:
+// it reads neutral products from the caller's channel, converts each to a
+// bmecat2005.Product, and forwards it, so only one product is in flight at a
+// time. Producer errors and ctx cancellation are propagated.
+func (c *v2005CatalogWriter) Products(ctx context.Context) (<-chan *bmecat2005.Product, <-chan error) {
+	out := make(chan *bmecat2005.Product)
+	errc := make(chan error, 1)
+
+	src, srcErr := c.neutral.Products(ctx)
+	if src == nil {
+		close(out)
+		return out, errc
+	}
+
+	// out is closed only on clean completion. On an error or cancellation the
+	// goroutine sends to errc and returns with out left open, so the version
+	// writer's select can only proceed via errc — a closed out and a ready errc
+	// are weighed equally by that select, so closing out here would let a clean
+	// EOF win the race and silently swallow the error.
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				errc <- ctx.Err()
+				return
+			case err := <-srcErr:
+				if err != nil {
+					errc <- err
+					return
+				}
+				close(out)
+				return
+			case p, ok := <-src:
+				if !ok {
+					// The product channel closed. A producer that closes it via
+					// defer may have sent its error a moment earlier, so check
+					// once more before finishing cleanly.
+					select {
+					case err := <-srcErr:
+						if err != nil {
+							errc <- err
+							return
+						}
+					default:
+					}
+					close(out)
+					return
+				}
+				if p == nil {
+					continue
+				}
+				select {
+				case out <- neutralProductToV2005(p):
+				case <-ctx.Done():
+					errc <- ctx.Err()
+					return
+				}
+			}
+		}
+	}()
+	return out, errc
+}
+
+func neutralHeaderToV2005(h *Header) *bmecat2005.Header {
+	if h == nil {
+		return nil
+	}
+	out := &bmecat2005.Header{GeneratorInfo: h.GeneratorInfo}
+	if c := h.Catalog; c != nil {
+		out.Catalog = &bmecat2005.Catalog{
+			Language:    c.Language,
+			ID:          c.ID,
+			Version:     c.Version,
+			Name:        c.Name,
+			Currency:    c.Currency,
+			Territories: c.Territories,
+		}
+	}
+	if b := h.Buyer; b != nil {
+		out.Buyer = &bmecat2005.Buyer{Name: b.Name}
+		if b.ID != "" {
+			out.Buyer.ID = &bmecat2005.IDRef{Value: b.ID}
+		}
+	}
+	if s := h.Supplier; s != nil {
+		out.Supplier = &bmecat2005.Supplier{Name: s.Name}
+		if s.ID != "" {
+			out.Supplier.ID = &bmecat2005.IDRef{Value: s.ID}
+		}
+	}
+	return out
+}
+
+func neutralProductToV2005(p *Product) *bmecat2005.Product {
+	prod := &bmecat2005.Product{
+		Mode:        p.Mode,
+		SupplierPID: p.ID,
+		Details: &bmecat2005.ProductDetails{
+			DescriptionShort:      p.DescriptionShort,
+			DescriptionLong:       p.DescriptionLong,
+			SupplierAltPID:        p.SupplierAltID,
+			ManufacturerPID:       p.ManufacturerID,
+			ManufacturerName:      p.ManufacturerName,
+			ManufacturerTypeDescr: p.ManufacturerTypeDescr,
+			ERPGroupBuyer:         p.ERPGroupBuyer,
+			ERPGroupSupplier:      p.ERPGroupSupplier,
+			DeliveryTime:          p.DeliveryTime,
+			Keywords:              p.Keywords,
+			Remarks:               p.Remarks,
+			Segments:              p.Segments,
+		},
+	}
+	// GTIN maps to INTERNATIONAL_PID (the 2005 replacement for EAN); the reader
+	// reads it back from the first INTERNATIONAL_PID.
+	if p.GTIN != "" {
+		prod.Details.InternationalPIDs = []*bmecat2005.InternationalPID{{Type: "gtin", Value: p.GTIN}}
+	}
+	for _, b := range p.BuyerIDs {
+		prod.Details.BuyerPIDs = append(prod.Details.BuyerPIDs, &bmecat2005.BuyerPID{Type: b.Type, Value: b.Value})
+	}
+	for _, s := range p.SpecialTreatmentClasses {
+		prod.Details.SpecialTreatmentClasses = append(prod.Details.SpecialTreatmentClasses, &bmecat2005.ProductSpecialTreatmentClass{Type: s.Type, Value: s.Value})
+	}
+	for _, s := range p.Status {
+		prod.Details.ProductStatus = append(prod.Details.ProductStatus, &bmecat2005.ProductStatus{Type: s.Type, Value: s.Value})
+	}
+	if od := neutralOrderDetailsToV2005(p); od != nil {
+		prod.OrderDetails = od
+	}
+	for _, f := range p.Features {
+		prod.Features = append(prod.Features, neutralFeaturesToV2005(f))
+	}
+	if prices := neutralPricesToV2005(p.Prices); prices != nil {
+		prod.PriceDetails = []*bmecat2005.ProductPriceDetails{{Prices: prices}}
+	}
+	if mi := neutralMimesToV2005(p.Mimes); mi != nil {
+		prod.MimeInfo = mi
+	}
+	if udx := neutralUDXToV2005(p.UDX); udx != nil {
+		prod.UDX = udx
+	}
+	return prod
+}
+
+// neutralOrderDetailsToV2005 returns the PRODUCT_ORDER_DETAILS for a product,
+// or nil when the product carries no order detail. Unlike 1.2, 2005 has
+// QUANTITY_MAX, so QuantityMax is carried here.
+func neutralOrderDetailsToV2005(p *Product) *bmecat2005.ProductOrderDetails {
+	if p.OrderUnit == "" && p.ContentUnit == "" && p.NoCuPerOu == 0 &&
+		p.PriceQuantity == 0 && p.QuantityMin == 0 && p.QuantityInterval == 0 &&
+		p.QuantityMax == 0 {
+		return nil
+	}
+	return &bmecat2005.ProductOrderDetails{
+		OrderUnit:        p.OrderUnit,
+		ContentUnit:      p.ContentUnit,
+		NoCuPerOu:        p.NoCuPerOu,
+		PriceQuantity:    p.PriceQuantity,
+		QuantityMin:      p.QuantityMin,
+		QuantityInterval: p.QuantityInterval,
+		QuantityMax:      p.QuantityMax,
+	}
+}
+
+func neutralFeaturesToV2005(f *Features) *bmecat2005.ProductFeatures {
+	if f == nil {
+		return nil
+	}
+	out := &bmecat2005.ProductFeatures{
+		FeatureSystemName: f.SystemName,
+		FeatureGroupID:    f.GroupID,
+		FeatureGroupName:  f.GroupName,
+	}
+	for _, ft := range f.Features {
+		out.Features = append(out.Features, &bmecat2005.Feature{
+			Name:   ft.Name,
+			Values: ft.Values,
+			Unit:   ft.Unit,
+		})
+	}
+	return out
+}
+
+func neutralPricesToV2005(prices []*Price) []*bmecat2005.ProductPrice {
+	if len(prices) == 0 {
+		return nil
+	}
+	out := make([]*bmecat2005.ProductPrice, 0, len(prices))
+	for _, p := range prices {
+		out = append(out, &bmecat2005.ProductPrice{
+			Type:       p.Type,
+			Amount:     p.Amount,
+			Currency:   p.Currency,
+			Tax:        p.Tax,
+			Factor:     p.Factor,
+			LowerBound: p.LowerBound,
+			Territory:  p.Territory,
+		})
+	}
+	return out
+}
+
+func neutralMimesToV2005(mimes []*Mime) *bmecat2005.MimeInfo {
+	if len(mimes) == 0 {
+		return nil
+	}
+	mi := &bmecat2005.MimeInfo{}
+	for _, m := range mimes {
+		mi.Mimes = append(mi.Mimes, &bmecat2005.Mime{
+			Type:    m.Type,
+			Source:  m.Source,
+			Descr:   m.Descr,
+			Purpose: m.Purpose,
+			Order:   m.Order,
+		})
+	}
+	return mi
+}
+
+func neutralUDXToV2005(fields []*UDXField) *bmecat2005.UserDefinedExtensions {
+	if len(fields) == 0 {
+		return nil
+	}
+	udx := &bmecat2005.UserDefinedExtensions{}
+	for _, f := range fields {
+		udx.Fields.Add(f.Name, f.Value)
+	}
+	return udx
+}

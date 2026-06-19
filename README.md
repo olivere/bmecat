@@ -149,8 +149,55 @@ Windows-1252, which matches how most real-world catalogs are authored.
 
 ## Writing a catalog
 
-Writing is version-specific. Implement the `CatalogWriter` interface of the
-target package (`bmecat12` or `bmecat2005`) and hand it to that package's
+### Version-neutral writing
+
+`bmecat.NewWriter` is the streaming, write-path counterpart of
+`bmecat.NewReader`: implement a neutral `CatalogWriter` (a header plus a channel
+of products), pick a target version with `WithVersion`, and the writer emits a
+valid BMEcat 1.2 or 2005 document, converting the neutral model to the
+version-specific one for you. Like reading, writing is streaming — each product
+is converted and encoded as it arrives, so even a catalog of millions of
+products is never held in memory at once.
+
+```go
+// catalog implements bmecat.CatalogWriter.
+type catalog struct{ /* e.g. a database handle */ }
+
+func (catalog) Header() *bmecat.Header { return header }
+
+func (c catalog) Products(ctx context.Context) (<-chan *bmecat.Product, <-chan error) {
+	out := make(chan *bmecat.Product)
+	errc := make(chan error, 1)
+	go func() {
+		defer close(out)
+		for _, p := range c.stream() { // e.g. rows from a database cursor
+			select {
+			case out <- p:
+			case <-ctx.Done():
+				errc <- ctx.Err()
+				return
+			}
+		}
+	}()
+	return out, errc
+}
+
+// ...
+w := bmecat.NewWriter(out, bmecat.WithVersion(bmecat.Version2005))
+if err := w.Do(context.Background(), catalog{}); err != nil {
+	return err
+}
+```
+
+The neutral model carries the fields 1.2 and 2005 have in common, so the output
+covers those; version-specific fidelity needs the version packages below. The
+neutral writer also does not emit catalog-group mappings (neither version writer
+does).
+
+### Version-specific writing
+
+For full, version-specific fidelity, implement the `CatalogWriter` interface of
+the target package (`bmecat12` or `bmecat2005`) and hand it to that package's
 `Writer.Do`. See the package documentation
 ([bmecat12](https://pkg.go.dev/github.com/olivere/bmecat/bmecat12),
 [bmecat2005](https://pkg.go.dev/github.com/olivere/bmecat/bmecat2005)) and the

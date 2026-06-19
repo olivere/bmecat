@@ -74,3 +74,66 @@ func ExampleReader_DetectVersion() {
 	// Output:
 	// version 1.2
 }
+
+// springCatalog is a neutral CatalogWriter: it supplies the header and streams
+// the products. A real implementation would stream from a database or file so
+// the whole catalog is never held in memory; here it ranges over a slice.
+type springCatalog struct{}
+
+func (springCatalog) Header() *bmecat.Header {
+	return &bmecat.Header{
+		Catalog: &bmecat.Catalog{
+			Language: "deu",
+			ID:       "CAT1",
+			Version:  "1.0",
+			Name:     "Spring Catalog",
+		},
+		Supplier: &bmecat.Supplier{Name: "SupplyCo"},
+	}
+}
+
+func (springCatalog) Products(ctx context.Context) (<-chan *bmecat.Product, <-chan error) {
+	products := []*bmecat.Product{
+		{
+			ID:               "1000",
+			GTIN:             "1234567890123",
+			DescriptionShort: "Widget",
+			OrderUnit:        "PCE",
+			Prices: []*bmecat.Price{
+				{Type: "net_customer", Amount: 9.99, Currency: "EUR"},
+			},
+		},
+	}
+	out := make(chan *bmecat.Product)
+	errc := make(chan error, 1)
+	go func() {
+		defer close(out)
+		for _, p := range products {
+			select {
+			case out <- p:
+			case <-ctx.Done():
+				errc <- ctx.Err()
+				return
+			}
+		}
+	}()
+	return out, errc
+}
+
+// ExampleWriter writes a neutral catalog as BMEcat 2005. The same CatalogWriter
+// would produce a 1.2 document with bmecat.WithVersion(bmecat.Version12).
+func ExampleWriter() {
+	var buf strings.Builder
+	w := bmecat.NewWriter(&buf, bmecat.WithVersion(bmecat.Version2005))
+	if err := w.Do(context.Background(), springCatalog{}); err != nil {
+		panic(err)
+	}
+
+	// Read it straight back through the neutral reader to show it round-trips.
+	if err := bmecat.NewReader(strings.NewReader(buf.String())).Do(context.Background(), catalogPrinter{}); err != nil {
+		panic(err)
+	}
+	// Output:
+	// Catalog "Spring Catalog" (BMEcat 2005)
+	// - 1000: Widget (GTIN 1234567890123)
+}
