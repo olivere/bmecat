@@ -39,7 +39,7 @@ func TestStreamProducts(t *testing.T) {
 			for i := range n {
 				p := &bmecat2005.Product{
 					SupplierPID: fmt.Sprintf("P%04d", i),
-					Details:     &bmecat2005.ProductDetails{DescriptionShort: "x"},
+					Details:     &bmecat2005.ProductDetails{DescriptionShort: bmecat2005.Localized("x")},
 				}
 				if err := yield(p); err != nil {
 					return err
@@ -71,7 +71,7 @@ func TestStreamProductsSkipsNil(t *testing.T) {
 			if err := yield(nil); err != nil {
 				return err
 			}
-			return yield(&bmecat2005.Product{SupplierPID: "1", Details: &bmecat2005.ProductDetails{DescriptionShort: "x"}})
+			return yield(&bmecat2005.Product{SupplierPID: "1", Details: &bmecat2005.ProductDetails{DescriptionShort: bmecat2005.Localized("x")}})
 		},
 	}
 
@@ -91,7 +91,7 @@ func TestStreamProductsProducerError(t *testing.T) {
 	cw := funcCatalog{
 		header: testHeader,
 		produce: func(yield func(*bmecat2005.Product) error) error {
-			if err := yield(&bmecat2005.Product{SupplierPID: "1", Details: &bmecat2005.ProductDetails{DescriptionShort: "x"}}); err != nil {
+			if err := yield(&bmecat2005.Product{SupplierPID: "1", Details: &bmecat2005.ProductDetails{DescriptionShort: bmecat2005.Localized("x")}}); err != nil {
 				return err
 			}
 			return boom
@@ -113,7 +113,7 @@ func TestStreamProductsContextCancel(t *testing.T) {
 	cw := funcCatalog{
 		header: testHeader,
 		produce: func(yield func(*bmecat2005.Product) error) error {
-			return yield(&bmecat2005.Product{SupplierPID: "1", Details: &bmecat2005.ProductDetails{DescriptionShort: "x"}})
+			return yield(&bmecat2005.Product{SupplierPID: "1", Details: &bmecat2005.ProductDetails{DescriptionShort: bmecat2005.Localized("x")}})
 		},
 	}
 

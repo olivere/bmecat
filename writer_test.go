@@ -66,18 +66,18 @@ func fullProduct() *bmecat.Product {
 	return &bmecat.Product{
 		ID:                      "1000",
 		GTIN:                    "1234567890123",
-		DescriptionShort:        "Widget",
-		DescriptionLong:         "A useful widget.",
+		DescriptionShort:        bmecat.Localized("Widget"),
+		DescriptionLong:         bmecat.Localized("A useful widget."),
 		SupplierAltID:           "ALT-1",
 		ManufacturerID:          "MPN-1",
 		ManufacturerName:        "Acme",
-		ManufacturerTypeDescr:   "Type-X",
+		ManufacturerTypeDescr:   bmecat.Localized("Type-X"),
 		ERPGroupBuyer:           "EB",
 		ERPGroupSupplier:        "ES",
 		DeliveryTime:            wInt(5),
-		Keywords:                []string{"tool", "widget"},
-		Remarks:                 "handle with care",
-		Segments:                []string{"SEG1"},
+		Keywords:                bmecat.Localized("tool", "widget"),
+		Remarks:                 bmecat.Localized("handle with care"),
+		Segments:                bmecat.Localized("SEG1"),
 		BuyerIDs:                []*bmecat.TypedValue{{Type: "buyer", Value: "B-1"}},
 		SpecialTreatmentClasses: []*bmecat.TypedValue{{Type: "GGVS", Value: "12"}},
 		Status:                  []*bmecat.TypedValue{{Type: "new", Value: "yes"}},
@@ -85,7 +85,7 @@ func fullProduct() *bmecat.Product {
 			SystemName: "ECLASS-5.1",
 			GroupID:    "19010203",
 			Features: []*bmecat.Feature{
-				{Name: "Voltage", Values: []string{"230"}, Unit: "VLT"},
+				{Name: bmecat.Localized("Voltage"), Values: bmecat.Localized("230"), Unit: "VLT"},
 			},
 		}},
 		OrderUnit:        "PCE",
@@ -97,7 +97,7 @@ func fullProduct() *bmecat.Product {
 		Prices:           []*bmecat.Price{price},
 		PriceDetails:     []*bmecat.PriceDetails{{Prices: []*bmecat.Price{price}}},
 		Mimes: []*bmecat.Mime{{
-			Type: "image/jpeg", Source: "img.jpg", Descr: "Image", Purpose: "normal", Order: 1,
+			Type: "image/jpeg", Source: bmecat.Localized("img.jpg"), Descr: bmecat.Localized("Image"), Purpose: "normal", Order: 1,
 		}},
 		UDX: []*bmecat.UDXField{{Name: "SYSTEM.CUSTOM_FIELD1", Value: "A"}},
 	}
@@ -110,7 +110,7 @@ func fullHeader() *bmecat.Header {
 			Language:    "deu",
 			ID:          "CAT1",
 			Version:     "1.0",
-			Name:        "Test Catalog",
+			Name:        bmecat.Localized("Test Catalog"),
 			Currency:    "EUR",
 			Territories: []string{"DE", "AT"},
 		},
@@ -251,7 +251,7 @@ func TestWriteStreaming(t *testing.T) {
 	const n = 1000
 	products := make([]*bmecat.Product, n)
 	for i := range products {
-		products[i] = &bmecat.Product{ID: fmt.Sprintf("P%04d", i), DescriptionShort: "x", OrderUnit: "PCE"}
+		products[i] = &bmecat.Product{ID: fmt.Sprintf("P%04d", i), DescriptionShort: bmecat.Localized("x"), OrderUnit: "PCE"}
 	}
 	cw := &sliceCatalogWriter{header: fullHeader(), products: products}
 
@@ -345,7 +345,7 @@ func TestWriteFuncStreaming(t *testing.T) {
 	err := bmecat.NewWriter(&buf, bmecat.WithVersion(bmecat.Version2005)).
 		WriteFunc(context.Background(), fullHeader(), func(yield func(*bmecat.Product) error) error {
 			for i := range n {
-				p := &bmecat.Product{ID: fmt.Sprintf("P%04d", i), DescriptionShort: "x", OrderUnit: "PCE"}
+				p := &bmecat.Product{ID: fmt.Sprintf("P%04d", i), DescriptionShort: bmecat.Localized("x"), OrderUnit: "PCE"}
 				if err := yield(p); err != nil {
 					return err
 				}
@@ -374,7 +374,7 @@ func TestWriteFuncSkipsNil(t *testing.T) {
 			if err := yield(nil); err != nil {
 				return err
 			}
-			return yield(&bmecat.Product{ID: "1", DescriptionShort: "x", OrderUnit: "PCE"})
+			return yield(&bmecat.Product{ID: "1", DescriptionShort: bmecat.Localized("x"), OrderUnit: "PCE"})
 		})
 	if err != nil {
 		t.Fatal(err)

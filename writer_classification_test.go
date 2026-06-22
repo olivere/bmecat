@@ -16,17 +16,17 @@ import (
 func classificationSystem() *bmecat.ClassificationSystem {
 	return &bmecat.ClassificationSystem{
 		Name:        "udf_Supplier-1.0",
-		FullName:    "Supplier classification 1.0",
+		FullName:    bmecat.Localized("Supplier classification 1.0"),
 		Version:     "1.0",
-		Description: "Supplier-defined classification",
+		Description: bmecat.Localized("Supplier-defined classification"),
 		Levels:      2,
 		LevelNames: []*bmecat.ClassificationSystemLevelName{
 			{Level: 1, Name: "Main group"},
 			{Level: 2, Name: "Sub group"},
 		},
 		Groups: []*bmecat.ClassificationGroup{
-			{Type: "node", ID: "1", Name: "Tools", Description: "All tools"},
-			{Type: "leaf", ID: "2", Name: "Widgets", Description: "Widget tools", ParentID: "1"},
+			{Type: "node", ID: "1", Name: bmecat.Localized("Tools"), Description: bmecat.Localized("All tools")},
+			{Type: "leaf", ID: "2", Name: bmecat.Localized("Widgets"), Description: bmecat.Localized("Widget tools"), ParentID: "1"},
 		},
 	}
 }

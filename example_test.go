@@ -13,12 +13,12 @@ import (
 type catalogPrinter struct{}
 
 func (catalogPrinter) HandleHeader(h *bmecat.Header) error {
-	fmt.Printf("Catalog %q (BMEcat %s)\n", h.Catalog.Name, h.Version)
+	fmt.Printf("Catalog %q (BMEcat %s)\n", h.Catalog.Name.Value(), h.Version)
 	return nil
 }
 
 func (catalogPrinter) HandleProduct(p *bmecat.Product) error {
-	fmt.Printf("- %s: %s (GTIN %s)\n", p.ID, p.DescriptionShort, p.GTIN)
+	fmt.Printf("- %s: %s (GTIN %s)\n", p.ID, p.DescriptionShort.Value(), p.GTIN)
 	return nil
 }
 
@@ -86,7 +86,7 @@ func (springCatalog) Header() *bmecat.Header {
 			Language: "deu",
 			ID:       "CAT1",
 			Version:  "1.0",
-			Name:     "Spring Catalog",
+			Name:     bmecat.Localized("Spring Catalog"),
 		},
 		Supplier: &bmecat.Supplier{Name: "SupplyCo"},
 	}
@@ -97,7 +97,7 @@ func (springCatalog) Products(ctx context.Context) (<-chan *bmecat.Product, <-ch
 		{
 			ID:               "1000",
 			GTIN:             "1234567890123",
-			DescriptionShort: "Widget",
+			DescriptionShort: bmecat.Localized("Widget"),
 			OrderUnit:        "PCE",
 			Prices: []*bmecat.Price{
 				{Type: "net_customer", Amount: 9.99, Currency: "EUR"},
@@ -142,14 +142,14 @@ func ExampleWriter() {
 // the producer streams products by calling yield, with no channels to manage.
 func ExampleWriter_writeFunc() {
 	header := &bmecat.Header{
-		Catalog:  &bmecat.Catalog{Language: "deu", ID: "CAT1", Version: "1.0", Name: "Spring Catalog"},
+		Catalog:  &bmecat.Catalog{Language: "deu", ID: "CAT1", Version: "1.0", Name: bmecat.Localized("Spring Catalog")},
 		Supplier: &bmecat.Supplier{Name: "SupplyCo"},
 	}
 	products := []*bmecat.Product{
 		{
 			ID:               "1000",
 			GTIN:             "1234567890123",
-			DescriptionShort: "Widget",
+			DescriptionShort: bmecat.Localized("Widget"),
 			OrderUnit:        "PCE",
 			Prices:           []*bmecat.Price{{Type: "net_customer", Amount: 9.99, Currency: "EUR"}},
 		},

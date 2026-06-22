@@ -47,7 +47,7 @@ func (c *v12CatalogWriter) Language() string {
 // the Writer to the bmecat12 type, or returns nil to omit CLASSIFICATION_SYSTEM
 // when none was configured (or it carries no groups).
 func (c *v12CatalogWriter) ClassificationSystem() *bmecat12.ClassificationSystem {
-	return neutralClassificationSystemToV12(c.classification)
+	return neutralClassificationSystemToV12(c.classification, c.Language())
 }
 
 // Articles bridges the neutral product stream to the bmecat12 article stream:
@@ -102,7 +102,7 @@ func (c *v12CatalogWriter) Articles(ctx context.Context) (<-chan *bmecat12.Artic
 					continue
 				}
 				select {
-				case out <- neutralProductToV12(p):
+				case out <- neutralProductToV12(p, c.Language()):
 				case <-ctx.Done():
 					errc <- ctx.Err()
 					return
@@ -116,19 +116,25 @@ func (c *v12CatalogWriter) Articles(ctx context.Context) (<-chan *bmecat12.Artic
 // neutralClassificationSystemToV12 converts the neutral classification system
 // to the bmecat12 type. It returns nil for a nil or blank system, so the writer
 // omits CLASSIFICATION_SYSTEM exactly as it does for a native bmecat12 source.
-func neutralClassificationSystemToV12(cs *ClassificationSystem) *bmecat12.ClassificationSystem {
+func neutralClassificationSystemToV12(cs *ClassificationSystem, lang string) *bmecat12.ClassificationSystem {
 	if cs.IsBlank() {
 		return nil
 	}
 	out := &bmecat12.ClassificationSystem{
 		Name:        cs.Name,
-		FullName:    cs.FullName,
+		FullName:    mlToV12(cs.FullName, lang),
 		Version:     cs.Version,
-		Description: cs.Description,
+		Description: mlToV12(cs.Description, lang),
 		Levels:      cs.Levels,
 	}
 	for _, ln := range cs.LevelNames {
 		if ln == nil {
+			continue
+		}
+		// 1.2 has no per-element lang. Drop variants in a language other than the
+		// catalog's so a multi-language level is not duplicated; keep language-less
+		// entries always.
+		if ln.Lang != "" && lang != "" && ln.Lang != lang {
 			continue
 		}
 		out.LevelNames = append(out.LevelNames, &bmecat12.ClassificationSystemLevelName{
@@ -143,8 +149,8 @@ func neutralClassificationSystemToV12(cs *ClassificationSystem) *bmecat12.Classi
 		out.Groups = append(out.Groups, &bmecat12.ClassificationGroup{
 			Type:        g.Type,
 			ID:          g.ID,
-			Name:        g.Name,
-			Description: g.Description,
+			Name:        mlToV12(g.Name, lang),
+			Description: mlToV12(g.Description, lang),
 			ParentID:    g.ParentID,
 		})
 	}
@@ -161,7 +167,7 @@ func neutralHeaderToV12(h *Header) *bmecat12.Header {
 			Language:    c.Language,
 			ID:          c.ID,
 			Version:     c.Version,
-			Name:        c.Name,
+			Name:        mlToV12(c.Name, c.Language),
 			Currency:    c.Currency,
 			Territories: c.Territories,
 		}
@@ -181,24 +187,56 @@ func neutralHeaderToV12(h *Header) *bmecat12.Header {
 	return out
 }
 
-func neutralProductToV12(p *Product) *bmecat12.Article {
+// collapseLangV12 resolves the single language a BMEcat 1.2 (single-language)
+// document should carry: the requested catalog language if any variant uses it,
+// otherwise the first variant's own language. Both v12 collapse helpers resolve
+// the language the same way, so a single value and a repeating list stay in the
+// same language even when no catalog language is configured.
+func collapseLangV12(in LocalizedStrings, lang string) string {
+	for _, ls := range in {
+		if ls.Lang == lang {
+			return lang
+		}
+	}
+	if len(in) > 0 {
+		return in[0].Lang
+	}
+	return lang
+}
+
+// mlToV12 collapses a neutral LocalizedStrings to a single BMEcat 1.2 scalar
+// value. BMEcat 1.2 has no per-element lang attribute, so it emits the variant
+// matching the catalog language, falling back to the first variant. Writing a
+// multi-language neutral catalog to 1.2 is therefore lossy by design.
+func mlToV12(in LocalizedStrings, lang string) string {
+	return in.Get(collapseLangV12(in, lang))
+}
+
+// mlSliceToV12 collapses a neutral LocalizedStrings for a repeating element
+// (such as KEYWORD) to the BMEcat 1.2 scalar list for a single language, so a
+// multi-language list does not leak every language's values into 1.2 output.
+func mlSliceToV12(in LocalizedStrings, lang string) []string {
+	return in.All(collapseLangV12(in, lang))
+}
+
+func neutralProductToV12(p *Product, lang string) *bmecat12.Article {
 	a := &bmecat12.Article{
 		Mode:        p.Mode,
 		SupplierAID: p.ID,
 		Details: &bmecat12.ArticleDetails{
-			DescriptionShort:      p.DescriptionShort,
-			DescriptionLong:       p.DescriptionLong,
+			DescriptionShort:      mlToV12(p.DescriptionShort, lang),
+			DescriptionLong:       mlToV12(p.DescriptionLong, lang),
 			EAN:                   p.GTIN,
 			SupplierAltAID:        p.SupplierAltID,
 			ManufacturerAID:       p.ManufacturerID,
 			ManufacturerName:      p.ManufacturerName,
-			ManufacturerTypeDescr: p.ManufacturerTypeDescr,
+			ManufacturerTypeDescr: mlToV12(p.ManufacturerTypeDescr, lang),
 			ERPGroupBuyer:         p.ERPGroupBuyer,
 			ERPGroupSupplier:      p.ERPGroupSupplier,
 			DeliveryTime:          p.DeliveryTime,
-			Keywords:              p.Keywords,
-			Remarks:               p.Remarks,
-			Segments:              p.Segments,
+			Keywords:              mlSliceToV12(p.Keywords, lang),
+			Remarks:               mlToV12(p.Remarks, lang),
+			Segments:              mlSliceToV12(p.Segments, lang),
 		},
 	}
 	for _, b := range p.BuyerIDs {
@@ -214,10 +252,10 @@ func neutralProductToV12(p *Product) *bmecat12.Article {
 		a.OrderDetails = od
 	}
 	for _, f := range p.Features {
-		a.Features = append(a.Features, neutralFeaturesToV12(f))
+		a.Features = append(a.Features, neutralFeaturesToV12(f, lang))
 	}
 	a.PriceDetails = neutralPriceDetailsToV12(p)
-	if mi := neutralMimesToV12(p.Mimes); mi != nil {
+	if mi := neutralMimesToV12(p.Mimes, lang); mi != nil {
 		a.MimeInfo = mi
 	}
 	if udx := neutralUDXToV12(p.UDX); udx != nil {
@@ -244,19 +282,19 @@ func neutralOrderDetailsToV12(p *Product) *bmecat12.ArticleOrderDetails {
 	}
 }
 
-func neutralFeaturesToV12(f *Features) *bmecat12.ArticleFeatures {
+func neutralFeaturesToV12(f *Features, lang string) *bmecat12.ArticleFeatures {
 	if f == nil {
 		return nil
 	}
 	out := &bmecat12.ArticleFeatures{
 		FeatureSystemName: f.SystemName,
 		FeatureGroupID:    f.GroupID,
-		FeatureGroupName:  f.GroupName,
+		FeatureGroupName:  mlToV12(f.GroupName, lang),
 	}
 	for _, ft := range f.Features {
 		out.Features = append(out.Features, &bmecat12.Feature{
-			Name:   ft.Name,
-			Values: ft.Values,
+			Name:   mlToV12(ft.Name, lang),
+			Values: mlSliceToV12(ft.Values, lang),
 			Unit:   ft.Unit,
 		})
 	}
@@ -325,7 +363,7 @@ func neutralPricesToV12(prices []*Price) []*bmecat12.ArticlePrice {
 	return out
 }
 
-func neutralMimesToV12(mimes []*Mime) *bmecat12.MimeInfo {
+func neutralMimesToV12(mimes []*Mime, lang string) *bmecat12.MimeInfo {
 	if len(mimes) == 0 {
 		return nil
 	}
@@ -333,8 +371,8 @@ func neutralMimesToV12(mimes []*Mime) *bmecat12.MimeInfo {
 	for _, m := range mimes {
 		mi.Mimes = append(mi.Mimes, &bmecat12.Mime{
 			Type:    m.Type,
-			Source:  m.Source,
-			Descr:   m.Descr,
+			Source:  mlToV12(m.Source, lang),
+			Descr:   mlToV12(m.Descr, lang),
 			Purpose: m.Purpose,
 			Order:   m.Order,
 		})

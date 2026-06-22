@@ -65,8 +65,8 @@ func (a *v2005Adapter) HandleCatalogGroup(cg *bmecat2005.CatalogGroup) error {
 	return a.catalogGroup.HandleCatalogGroup(&CatalogGroup{
 		Type:        cg.Type,
 		ID:          cg.ID,
-		Name:        cg.Name,
-		Description: cg.Description,
+		Name:        localizedFromV2005(cg.Name),
+		Description: localizedFromV2005(cg.Description),
 		ParentID:    cg.ParentID,
 		Order:       cg.Order,
 	})
@@ -79,8 +79,8 @@ func (a *v2005Adapter) HandleClassificationGroup(cg *bmecat2005.ClassificationGr
 	return a.classifGroup.HandleClassificationGroup(&ClassificationGroup{
 		Type:        cg.Type,
 		ID:          cg.ID,
-		Name:        cg.Name,
-		Description: cg.Description,
+		Name:        localizedFromV2005(cg.Name),
+		Description: localizedFromV2005(cg.Description),
 		ParentID:    cg.ParentID,
 	})
 }
@@ -107,7 +107,7 @@ func convertV2005Header(h *bmecat2005.Header) *Header {
 			Language:    c.Language,
 			ID:          c.ID,
 			Version:     c.Version,
-			Name:        c.Name,
+			Name:        localizedFromV2005(c.Name),
 			Currency:    c.Currency,
 			Territories: c.Territories,
 		}
@@ -138,18 +138,18 @@ func convertV2005Product(p *bmecat2005.Product) *Product {
 	}
 	if d := p.Details; d != nil {
 		out.GTIN = gtinFromV2005(d)
-		out.DescriptionShort = d.DescriptionShort
-		out.DescriptionLong = d.DescriptionLong
+		out.DescriptionShort = localizedFromV2005(d.DescriptionShort)
+		out.DescriptionLong = localizedFromV2005(d.DescriptionLong)
 		out.SupplierAltID = d.SupplierAltPID
 		out.ManufacturerID = d.ManufacturerPID
 		out.ManufacturerName = d.ManufacturerName
-		out.ManufacturerTypeDescr = d.ManufacturerTypeDescr
+		out.ManufacturerTypeDescr = localizedFromV2005(d.ManufacturerTypeDescr)
 		out.ERPGroupBuyer = d.ERPGroupBuyer
 		out.ERPGroupSupplier = d.ERPGroupSupplier
 		out.DeliveryTime = d.DeliveryTime
-		out.Keywords = d.Keywords
-		out.Remarks = d.Remarks
-		out.Segments = d.Segments
+		out.Keywords = localizedFromV2005(d.Keywords)
+		out.Remarks = localizedFromV2005(d.Remarks)
+		out.Segments = localizedFromV2005(d.Segments)
 		for _, b := range d.BuyerPIDs {
 			if b != nil {
 				out.BuyerIDs = append(out.BuyerIDs, &TypedValue{Type: b.Type, Value: b.Value})
@@ -191,12 +191,25 @@ func convertV2005Product(p *bmecat2005.Product) *Product {
 		for _, m := range mi.Mimes {
 			out.Mimes = append(out.Mimes, &Mime{
 				Type:    m.Type,
-				Source:  m.Source,
-				Descr:   m.Descr,
+				Source:  localizedFromV2005(m.Source),
+				Descr:   localizedFromV2005(m.Descr),
 				Purpose: m.Purpose,
 				Order:   m.Order,
 			})
 		}
+	}
+	return out
+}
+
+// localizedFromV2005 converts a bmecat2005 LocalizedStrings into the neutral
+// one, preserving variant order and language.
+func localizedFromV2005(in bmecat2005.LocalizedStrings) LocalizedStrings {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(LocalizedStrings, len(in))
+	for i, ls := range in {
+		out[i] = LocalizedString{Lang: ls.Lang, Value: ls.Value}
 	}
 	return out
 }
@@ -279,12 +292,12 @@ func convertV2005Features(f *bmecat2005.ProductFeatures) *Features {
 	out := &Features{
 		SystemName: f.FeatureSystemName,
 		GroupID:    f.FeatureGroupID,
-		GroupName:  f.FeatureGroupName,
+		GroupName:  localizedFromV2005(f.FeatureGroupName),
 	}
 	for _, ft := range f.Features {
 		out.Features = append(out.Features, &Feature{
-			Name:   ft.Name,
-			Values: ft.Values,
+			Name:   localizedFromV2005(ft.Name),
+			Values: localizedFromV2005(ft.Values),
 			Unit:   ft.Unit,
 		})
 	}

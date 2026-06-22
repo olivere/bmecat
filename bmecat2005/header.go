@@ -28,15 +28,15 @@ type Header struct {
 type Catalog struct {
 	XMLName xml.Name `xml:"CATALOG"`
 
-	Language    string      `xml:"LANGUAGE"`
-	ID          string      `xml:"CATALOG_ID"`
-	Version     string      `xml:"CATALOG_VERSION"`
-	Name        string      `xml:"CATALOG_NAME,omitempty"`
-	GenDate     *DateTime   `xml:"DATETIME,omitempty"`
-	Territories []string    `xml:"TERRITORY,omitempty"`
-	Currency    string      `xml:"CURRENCY,omitempty"`
-	MimeRoot    string      `xml:"MIME_ROOT,omitempty"`
-	PriceFlags  []PriceFlag `xml:"PRICE_FLAG,omitempty"`
+	Language    string           `xml:"LANGUAGE"`
+	ID          string           `xml:"CATALOG_ID"`
+	Version     string           `xml:"CATALOG_VERSION"`
+	Name        LocalizedStrings `xml:"CATALOG_NAME,omitempty"`
+	GenDate     *DateTime        `xml:"DATETIME,omitempty"`
+	Territories []string         `xml:"TERRITORY,omitempty"`
+	Currency    string           `xml:"CURRENCY,omitempty"`
+	MimeRoot    string           `xml:"MIME_ROOT,omitempty"`
+	PriceFlags  []PriceFlag      `xml:"PRICE_FLAG,omitempty"`
 }
 
 const (
@@ -70,24 +70,24 @@ type Buyer struct {
 }
 
 type Address struct {
-	Type      string `xml:"type,attr"`
-	Name      string `xml:"NAME,omitempty"`
-	Name2     string `xml:"NAME2,omitempty"`
-	Name3     string `xml:"NAME3,omitempty"`
-	Contact   string `xml:"CONTACT,omitempty"`
-	Street    string `xml:"STREET,omitempty"`
-	Zip       string `xml:"ZIP,omitempty"`
-	BoxNo     string `xml:"BOXNO,omitempty"`
-	ZipBox    string `xml:"ZIPBOX,omitempty"`
-	City      string `xml:"CITY,omitempty"`
-	State     string `xml:"STATE,omitempty"`
-	Country   string `xml:"COUNTRY,omitempty"`
-	Phone     string `xml:"PHONE,omitempty"`
-	Fax       string `xml:"FAX,omitempty"`
-	Email     string `xml:"EMAIL,omitempty"`
-	PublicKey string `xml:"PUBLIC_KEY,omitempty"`
-	URL       string `xml:"URL,omitempty"`
-	Remarks   string `xml:"ADDRESS_REMARKS,omitempty"`
+	Type      string           `xml:"type,attr"`
+	Name      LocalizedStrings `xml:"NAME,omitempty"`
+	Name2     LocalizedStrings `xml:"NAME2,omitempty"`
+	Name3     LocalizedStrings `xml:"NAME3,omitempty"`
+	Contact   LocalizedStrings `xml:"CONTACT,omitempty"`
+	Street    LocalizedStrings `xml:"STREET,omitempty"`
+	Zip       LocalizedStrings `xml:"ZIP,omitempty"`
+	BoxNo     LocalizedStrings `xml:"BOXNO,omitempty"`
+	ZipBox    LocalizedStrings `xml:"ZIPBOX,omitempty"`
+	City      LocalizedStrings `xml:"CITY,omitempty"`
+	State     LocalizedStrings `xml:"STATE,omitempty"`
+	Country   LocalizedStrings `xml:"COUNTRY,omitempty"`
+	Phone     LocalizedStrings `xml:"PHONE,omitempty"`
+	Fax       LocalizedStrings `xml:"FAX,omitempty"`
+	Email     string           `xml:"EMAIL,omitempty"`
+	PublicKey string           `xml:"PUBLIC_KEY,omitempty"`
+	URL       string           `xml:"URL,omitempty"`
+	Remarks   LocalizedStrings `xml:"ADDRESS_REMARKS,omitempty"`
 }
 
 const (

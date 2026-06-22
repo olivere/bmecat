@@ -146,7 +146,7 @@ func TestPriceDetailsRoundTrip(t *testing.T) {
 
 	product := &bmecat.Product{
 		ID:               "1000",
-		DescriptionShort: "Widget",
+		DescriptionShort: bmecat.Localized("Widget"),
 		PriceDetails: []*bmecat.PriceDetails{
 			{
 				ValidStart: &start,

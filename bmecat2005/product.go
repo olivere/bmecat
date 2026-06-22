@@ -58,8 +58,8 @@ type InternationalPID struct {
 }
 
 type ProductDetails struct {
-	DescriptionShort  string              `xml:"DESCRIPTION_SHORT"`
-	DescriptionLong   string              `xml:"DESCRIPTION_LONG,omitempty"`
+	DescriptionShort  LocalizedStrings    `xml:"DESCRIPTION_SHORT"`
+	DescriptionLong   LocalizedStrings    `xml:"DESCRIPTION_LONG,omitempty"`
 	InternationalPIDs []*InternationalPID `xml:"INTERNATIONAL_PID,omitempty"`
 	// EAN is accepted when reading 2005 documents that still use the
 	// 1.2-compatible EAN element. The DTD treats INTERNATIONAL_PID and EAN as
@@ -70,14 +70,14 @@ type ProductDetails struct {
 	BuyerPIDs               []*BuyerPID                     `xml:"BUYER_PID,omitempty"`
 	ManufacturerPID         string                          `xml:"MANUFACTURER_PID,omitempty"`
 	ManufacturerName        string                          `xml:"MANUFACTURER_NAME,omitempty"`
-	ManufacturerTypeDescr   string                          `xml:"MANUFACTURER_TYPE_DESCR,omitempty"`
+	ManufacturerTypeDescr   LocalizedStrings                `xml:"MANUFACTURER_TYPE_DESCR,omitempty"`
 	ERPGroupBuyer           string                          `xml:"ERP_GROUP_BUYER,omitempty"`
 	ERPGroupSupplier        string                          `xml:"ERP_GROUP_SUPPLIER,omitempty"`
 	DeliveryTime            *int                            `xml:"DELIVERY_TIME,omitempty"`
 	SpecialTreatmentClasses []*ProductSpecialTreatmentClass `xml:"SPECIAL_TREATMENT_CLASS,omitempty"`
-	Keywords                []string                        `xml:"KEYWORD,omitempty"`
-	Remarks                 string                          `xml:"REMARKS,omitempty"`
-	Segments                []string                        `xml:"SEGMENT,omitempty"`
+	Keywords                LocalizedStrings                `xml:"KEYWORD,omitempty"`
+	Remarks                 LocalizedStrings                `xml:"REMARKS,omitempty"`
+	Segments                LocalizedStrings                `xml:"SEGMENT,omitempty"`
 	ProductOrder            int                             `xml:"PRODUCT_ORDER,omitempty"`
 	ProductStatus           []*ProductStatus                `xml:"PRODUCT_STATUS,omitempty"`
 }
@@ -88,10 +88,10 @@ type BuyerPID struct {
 }
 
 type ProductFeatures struct {
-	FeatureSystemName string     `xml:"REFERENCE_FEATURE_SYSTEM_NAME,omitempty"`
-	FeatureGroupID    string     `xml:"REFERENCE_FEATURE_GROUP_ID,omitempty"`
-	FeatureGroupName  string     `xml:"REFERENCE_FEATURE_GROUP_NAME,omitempty"`
-	Features          []*Feature `xml:"FEATURE,omitempty"`
+	FeatureSystemName string           `xml:"REFERENCE_FEATURE_SYSTEM_NAME,omitempty"`
+	FeatureGroupID    string           `xml:"REFERENCE_FEATURE_GROUP_ID,omitempty"`
+	FeatureGroupName  LocalizedStrings `xml:"REFERENCE_FEATURE_GROUP_NAME,omitempty"`
+	Features          []*Feature       `xml:"FEATURE,omitempty"`
 }
 
 func (pf ProductFeatures) IsEclass() bool {
@@ -111,13 +111,13 @@ func (pf ProductFeatures) Version() string {
 }
 
 type Feature struct {
-	Name         string             `xml:"FNAME"`
+	Name         LocalizedStrings   `xml:"FNAME"`
 	Variants     []*FeatureVariants `xml:"VARIANTS,omitempty"`
-	Values       []string           `xml:"FVALUE,omitempty"`
+	Values       LocalizedStrings   `xml:"FVALUE,omitempty"`
 	Unit         string             `xml:"FUNIT,omitempty"`
 	Order        int                `xml:"FORDER,omitempty"`
-	Descr        string             `xml:"FDESCR,omitempty"`
-	ValueDetails string             `xml:"FVALUE_DETAILS,omitempty"`
+	Descr        LocalizedStrings   `xml:"FDESCR,omitempty"`
+	ValueDetails LocalizedStrings   `xml:"FVALUE_DETAILS,omitempty"`
 }
 
 type FeatureVariants struct {
@@ -126,8 +126,8 @@ type FeatureVariants struct {
 }
 
 type FeatureVariant struct {
-	Value                 string `xml:"FVALUE"`
-	SupplierAIDSupplement string `xml:"SUPPLIER_AID_SUPPLEMENT"`
+	Value                 LocalizedStrings `xml:"FVALUE"`
+	SupplierAIDSupplement string           `xml:"SUPPLIER_AID_SUPPLEMENT"`
 }
 
 type ProductOrderDetails struct {

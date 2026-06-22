@@ -29,7 +29,7 @@ var testHeader = &bmecat2005.Header{
 		Language:    "deu",
 		ID:          "CAT1",
 		Version:     "1.0",
-		Name:        "Katalogbezeichnung",
+		Name:        bmecat2005.Localized("Katalogbezeichnung"),
 		GenDate:     bmecat2005.NewDateTime(bmecat2005.DateTimeGenerationDate, time.Date(2000, 10, 24, 20, 38, 0o0, 0, time.UTC)),
 		Territories: []string{"DE", "AT"},
 		Currency:    "EUR",
@@ -56,11 +56,11 @@ var testHeader = &bmecat2005.Header{
 		Name: "SupplyCo Ltd.",
 		Address: &bmecat2005.Address{
 			Type: "supplier",
-			City: "London",
+			City: bmecat2005.Localized("London"),
 		},
 		MimeInfo: &bmecat2005.MimeInfo{
 			Mimes: []*bmecat2005.Mime{
-				{Type: "image/jpeg", Source: "supplier_logo.jpg", Purpose: "logo"},
+				{Type: "image/jpeg", Source: bmecat2005.Localized("supplier_logo.jpg"), Purpose: "logo"},
 			},
 		},
 	},
@@ -138,13 +138,13 @@ func (w catalogWriter) Products(ctx context.Context) (<-chan *bmecat2005.Product
 func sampleClassificationSystem() *bmecat2005.ClassificationSystem {
 	return &bmecat2005.ClassificationSystem{
 		Name:     "udf_Supplier-1.0",
-		FullName: testHeader.Supplier.Name,
+		FullName: bmecat2005.Localized(testHeader.Supplier.Name),
 		Groups: []*bmecat2005.ClassificationGroup{
-			{ID: "1", Name: "Hardware", Type: "node"},
-			{ID: "2", Name: "Notebook", ParentID: "1", Type: "node"},
-			{ID: "3", Name: "Desktop", ParentID: "1", Type: "node"},
-			{ID: "4", Name: "PC", ParentID: "2", Type: "leaf"},
-			{ID: "5", Name: "Mac", ParentID: "2", Type: "leaf"},
+			{ID: "1", Name: bmecat2005.Localized("Hardware"), Type: "node"},
+			{ID: "2", Name: bmecat2005.Localized("Notebook"), ParentID: "1", Type: "node"},
+			{ID: "3", Name: bmecat2005.Localized("Desktop"), ParentID: "1", Type: "node"},
+			{ID: "4", Name: bmecat2005.Localized("PC"), ParentID: "2", Type: "leaf"},
+			{ID: "5", Name: bmecat2005.Localized("Mac"), ParentID: "2", Type: "leaf"},
 		},
 	}
 }
@@ -156,8 +156,8 @@ func sampleProduct() *bmecat2005.Product {
 	return &bmecat2005.Product{
 		SupplierPID: "1000",
 		Details: &bmecat2005.ProductDetails{
-			DescriptionShort: `Apple MacBook Pro 13"`,
-			DescriptionLong:  `Das Kraftpaket unter den Notebooks.`,
+			DescriptionShort: bmecat2005.Localized(`Apple MacBook Pro 13"`),
+			DescriptionLong:  bmecat2005.Localized(`Das Kraftpaket unter den Notebooks.`),
 			InternationalPIDs: []*bmecat2005.InternationalPID{
 				{Type: "gtin", Value: "8712670911213"},
 			},
@@ -171,8 +171,8 @@ func sampleProduct() *bmecat2005.Product {
 			SpecialTreatmentClasses: []*bmecat2005.ProductSpecialTreatmentClass{
 				{Type: "GGVS", Value: "1201"},
 			},
-			Keywords: []string{"Notebook", "Hardware"},
-			Remarks:  "Noch heute bestellen!",
+			Keywords: bmecat2005.Localized("Notebook", "Hardware"),
+			Remarks:  bmecat2005.Localized("Noch heute bestellen!"),
 			ProductStatus: []*bmecat2005.ProductStatus{
 				{Type: bmecat2005.ProductStatusCoreProduct, Value: "Kernsortiment"},
 			},
@@ -183,8 +183,8 @@ func sampleProduct() *bmecat2005.Product {
 				FeatureGroupID:    "19010203",
 				Features: []*bmecat2005.Feature{
 					{
-						Name:   "Netzspannung",
-						Values: []string{"110", "220"},
+						Name:   bmecat2005.Localized("Netzspannung"),
+						Values: bmecat2005.Localized("110", "220"),
 						Unit:   "VLT",
 					},
 				},
@@ -233,8 +233,8 @@ func sampleProduct() *bmecat2005.Product {
 			Mimes: []*bmecat2005.Mime{
 				{
 					Type:    "image/jpeg",
-					Source:  "55-K-31.jpg",
-					Descr:   "Frontansicht des Notebooks",
+					Source:  bmecat2005.Localized("55-K-31.jpg"),
+					Descr:   bmecat2005.Localized("Frontansicht des Notebooks"),
 					Purpose: bmecat2005.MimePurposeNormal,
 				},
 			},
@@ -298,7 +298,7 @@ func TestWriteNewCatalog(t *testing.T) {
 func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 	classSys := &bmecat2005.ClassificationSystem{
 		Name:     "udf_Supplier-1.0",
-		FullName: testHeader.Supplier.Name,
+		FullName: bmecat2005.Localized(testHeader.Supplier.Name),
 		Groups:   []*bmecat2005.ClassificationGroup{}, // no groups
 	}
 	cw := catalogWriter{

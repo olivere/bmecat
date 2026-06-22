@@ -98,10 +98,11 @@ type Header struct {
 
 // Catalog is the version-neutral view of the CATALOG element.
 type Catalog struct {
-	Language    string
-	ID          string
-	Version     string
-	Name        string
+	Language string
+	ID       string
+	Version  string
+	// Name is CATALOG_NAME, a localized element in BMEcat 2005.
+	Name        LocalizedStrings
 	Currency    string
 	Territories []string
 }
@@ -131,18 +132,25 @@ type Product struct {
 	// INTERNATIONAL_PID (2005). See GTIN handling in the package docs.
 	GTIN string
 
-	DescriptionShort string
-	DescriptionLong  string
+	// DescriptionShort and DescriptionLong are DESCRIPTION_SHORT /
+	// DESCRIPTION_LONG. They hold every language variant the source document
+	// carries, in document order; use [LocalizedStrings.Get] to pick one by
+	// language or [LocalizedStrings.Value] for the first.
+	DescriptionShort LocalizedStrings
+	DescriptionLong  LocalizedStrings
 	SupplierAltID    string
 	ManufacturerID   string
 	ManufacturerName string
-	// ManufacturerTypeDescr is MANUFACTURER_TYPE_DESCR.
-	ManufacturerTypeDescr string
-	Keywords              []string
-	// Remarks is REMARKS.
-	Remarks string
-	// Segments is the list of SEGMENT values.
-	Segments []string
+	// ManufacturerTypeDescr is MANUFACTURER_TYPE_DESCR, localized in 2005.
+	ManufacturerTypeDescr LocalizedStrings
+	// Keywords are the KEYWORD values. Each KEYWORD is localized in 2005, so
+	// the flat list carries both distinct keywords and their language variants;
+	// use [LocalizedStrings.All] to get every keyword for a language.
+	Keywords LocalizedStrings
+	// Remarks is REMARKS, localized in 2005.
+	Remarks LocalizedStrings
+	// Segments are the SEGMENT values, localized in 2005 (see Keywords).
+	Segments LocalizedStrings
 
 	// ERPGroupBuyer and ERPGroupSupplier are ERP_GROUP_BUYER /
 	// ERP_GROUP_SUPPLIER.
@@ -215,8 +223,9 @@ type UDXField struct {
 type Features struct {
 	SystemName string
 	GroupID    string
-	GroupName  string
-	Features   []*Feature
+	// GroupName is REFERENCE_FEATURE_GROUP_NAME, localized in 2005.
+	GroupName LocalizedStrings
+	Features  []*Feature
 }
 
 // IsEclass reports whether the feature system is an eCl@ss classification.
@@ -241,9 +250,14 @@ func (f Features) Version() string {
 
 // Feature is the version-neutral view of a single FEATURE.
 type Feature struct {
-	Name   string
-	Values []string
-	Unit   string
+	// Name is FNAME, localized in 2005.
+	Name LocalizedStrings
+	// Values are the FVALUE entries, localized in 2005; a feature may carry
+	// several values, so use [LocalizedStrings.All] to get every value for a
+	// language.
+	Values LocalizedStrings
+	// Unit is FUNIT. It is not localized.
+	Unit string
 }
 
 // Price is the version-neutral view of an ARTICLE_PRICE (1.2) / PRODUCT_PRICE
@@ -279,19 +293,23 @@ type PriceDetails struct {
 
 // Mime is the version-neutral view of a MIME element.
 type Mime struct {
-	Type    string
-	Source  string
-	Descr   string
+	Type string
+	// Source is MIME_SOURCE and Descr is MIME_DESCR, both localized in 2005
+	// (e.g. a language-specific datasheet or image).
+	Source  LocalizedStrings
+	Descr   LocalizedStrings
 	Purpose string
 	Order   int
 }
 
 // CatalogGroup is the version-neutral view of a CATALOG_STRUCTURE element.
 type CatalogGroup struct {
-	Type        string
-	ID          string
-	Name        string
-	Description string
+	Type string
+	ID   string
+	// Name is GROUP_NAME and Description is GROUP_DESCRIPTION, both localized
+	// in 2005.
+	Name        LocalizedStrings
+	Description LocalizedStrings
 	ParentID    *string
 	Order       int
 }
@@ -303,10 +321,12 @@ func (cg *CatalogGroup) IsLeaf() bool { return cg.Type == "leaf" }
 // ClassificationGroup is the version-neutral view of a CLASSIFICATION_GROUP
 // element.
 type ClassificationGroup struct {
-	Type        string
-	ID          string
-	Name        string
-	Description string
+	Type string
+	ID   string
+	// Name is CLASSIFICATION_GROUP_NAME and Description is
+	// CLASSIFICATION_GROUP_DESCR, both localized in 2005.
+	Name        LocalizedStrings
+	Description LocalizedStrings
 	ParentID    string
 }
 
@@ -325,10 +345,14 @@ func (cg *ClassificationGroup) IsLeaf() bool { return cg.Type == "leaf" }
 // are not emitted; callers that need them should use the bmecat12 / bmecat2005
 // packages directly.
 type ClassificationSystem struct {
-	Name        string
-	FullName    string
+	// Name is CLASSIFICATION_SYSTEM_NAME, the system identifier (e.g.
+	// "ECLASS-5.1"). It is not localized.
+	Name string
+	// FullName is CLASSIFICATION_SYSTEM_FULLNAME and Description is
+	// CLASSIFICATION_SYSTEM_DESCR, both localized in 2005.
+	FullName    LocalizedStrings
 	Version     string
-	Description string
+	Description LocalizedStrings
 	Levels      int
 	LevelNames  []*ClassificationSystemLevelName
 	Groups      []*ClassificationGroup
@@ -345,5 +369,9 @@ func (cs *ClassificationSystem) IsBlank() bool {
 // level in the classification hierarchy.
 type ClassificationSystemLevelName struct {
 	Level int
-	Name  string
+	// Lang is the language of Name. CLASSIFICATION_SYSTEM_LEVEL_NAME is
+	// localized in 2005, so a level may have one entry per language (empty for
+	// 1.2 or single-language systems).
+	Lang string
+	Name string
 }
