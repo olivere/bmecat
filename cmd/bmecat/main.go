@@ -14,6 +14,17 @@ var (
 	modeFlags   = make(map[string]*flag.FlagSet)
 )
 
+// sortedModes returns every registered mode name in alphabetical order, so the
+// usage output is deterministic instead of following the map's random order.
+func sortedModes() []string {
+	modes := make([]string, 0, len(modeCommand))
+	for mode := range modeCommand {
+		modes = append(modes, mode)
+	}
+	sort.Strings(modes)
+	return modes
+}
+
 // ErrUsage is returned when an unknown command is called.
 var ErrUsage = UsageError("invalid command")
 
@@ -78,30 +89,25 @@ func usage(msg string) {
 	}
 	Errorf("\nUsage: %s <mode> [commandopts] [commandargs]\n\nModes:\n\n", cmdName)
 
-	var modes []string
-	for mode, cmd := range modeCommand {
-		if _, ok := cmd.(describer); ok {
-			modes = append(modes, mode)
-		}
-	}
-	sort.Strings(modes)
+	modes := sortedModes()
 	for _, mode := range modes {
-		cmd := modeCommand[mode]
-		if des, ok := cmd.(describer); ok {
+		if des, ok := modeCommand[mode].(describer); ok {
 			Errorf("  %-25s %s\n", mode, des.Describe())
 		}
 	}
 
 	Errorf("\nExamples:\n")
-	for mode, cmd := range modeCommand {
-		if ex, ok := cmd.(exampler); ok {
-			exs := ex.Examples()
-			if len(exs) > 0 {
-				Errorf("\n")
-			}
-			for _, example := range exs {
-				Errorf("  %s %s %s\n", cmdName, mode, example)
-			}
+	for _, mode := range modes {
+		ex, ok := modeCommand[mode].(exampler)
+		if !ok {
+			continue
+		}
+		exs := ex.Examples()
+		if len(exs) > 0 {
+			Errorf("\n")
+		}
+		for _, example := range exs {
+			Errorf("  %s %s %s\n", cmdName, mode, example)
 		}
 	}
 

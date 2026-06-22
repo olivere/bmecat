@@ -3,14 +3,9 @@ package bmecat12
 import "time"
 
 var (
-	DefaultStartDate time.Time
-	DefaultEndDate   time.Time
+	DefaultStartDate = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	DefaultEndDate   = time.Date(2038, 1, 19, 0, 0, 0, 0, time.UTC)
 )
-
-func init() {
-	DefaultStartDate, _ = time.Parse("2006-01-02", "1970-01-01")
-	DefaultEndDate, _ = time.Parse("2006-01-02", "2038-01-19")
-}
 
 type DateTime struct {
 	Type           string `xml:"type,attr"`

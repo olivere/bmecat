@@ -3,7 +3,6 @@ package bmecat
 import (
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 // Version identifies the BMEcat version a document was written in.
@@ -241,9 +240,8 @@ func (f Features) IsUnspsc() bool {
 // Version returns the classification system version, e.g. "5.1" for
 // "ECLASS-5.1", or the empty string when no version is encoded.
 func (f Features) Version() string {
-	parts := strings.SplitN(f.SystemName, "-", 2)
-	if len(parts) == 2 && utf8.RuneCountInString(parts[1]) > 0 {
-		return parts[1]
+	if _, version, ok := strings.Cut(f.SystemName, "-"); ok {
+		return version
 	}
 	return ""
 }

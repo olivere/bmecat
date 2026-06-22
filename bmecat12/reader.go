@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -58,8 +57,10 @@ type Reader struct {
 	charsetReader CharsetReaderFunc
 	progress      ReaderProgress
 
-	artToCatalogGroupMu sync.Mutex
-	artToCatalogGroup   map[string][]string
+	// artToCatalogGroup maps SUPPLIER_AID to the catalog group IDs collected
+	// from ARTICLE_TO_CATALOGGROUP_MAP in pass 1. It is only ever touched from
+	// Do's single goroutine, so it needs no synchronization.
+	artToCatalogGroup map[string][]string
 }
 
 // NewReader creates a new Reader. It expects an underlying io.ReadSeeker
@@ -173,14 +174,7 @@ func (r *Reader) Do(ctx context.Context, handler any) error {
 				if err := dec.DecodeElement(&m, &se); err != nil {
 					return fmt.Errorf("bmecat/reader: unable to decode ARTICLE_TO_CATALOGGROUP_MAP around byte offset %d: %w", dec.InputOffset(), err)
 				}
-				r.artToCatalogGroupMu.Lock()
-				if slice, ok := r.artToCatalogGroup[m.ArticleID]; ok {
-					slice = append(slice, m.CatalogGroupID)
-					r.artToCatalogGroup[m.ArticleID] = slice
-				} else {
-					r.artToCatalogGroup[m.ArticleID] = []string{m.CatalogGroupID}
-				}
-				r.artToCatalogGroupMu.Unlock()
+				r.artToCatalogGroup[m.ArticleID] = append(r.artToCatalogGroup[m.ArticleID], m.CatalogGroupID)
 			}
 		}
 		if r.progress != nil && rl.Allow() {
@@ -226,9 +220,7 @@ func (r *Reader) Do(ctx context.Context, handler any) error {
 				hdr.NumberOfArticles = numArticles
 				hdr.NumberOfCatalogGroups = numCatalogGroups
 				hdr.NumberOfClassificationGroups = numClassifGroups
-				r.artToCatalogGroupMu.Lock()
 				hdr.NumberOfArticleToCatalogGroupMaps = len(r.artToCatalogGroup)
-				r.artToCatalogGroupMu.Unlock()
 				if h.Header != nil {
 					if err := h.Header.HandleHeader(&hdr); err != nil {
 						if err == io.EOF {
@@ -265,11 +257,9 @@ func (r *Reader) Do(ctx context.Context, handler any) error {
 				}
 				if h.Article != nil {
 					// Inject catalog group mappings
-					r.artToCatalogGroupMu.Lock()
 					if ids, ok := r.artToCatalogGroup[a.SupplierAID]; ok {
 						a.CatalogGroupIDs = ids
 					}
-					r.artToCatalogGroupMu.Unlock()
 					// Call handler
 					if err := h.Article.HandleArticle(&a); err != nil {
 						return fmt.Errorf("bmecat/reader: handler for ARTICLE %q returned an error around byte offset %d: %w", a.SupplierAID, dec.InputOffset(), err)
