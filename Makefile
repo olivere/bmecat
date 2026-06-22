@@ -4,6 +4,12 @@
 # `go run` to avoid pulling all of gopls into the module graph.
 MODERNIZE = golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest
 
+# Benchmark knobs (override on the command line, e.g. `make bench BENCH=Write`).
+# BENCHCOUNT samples each benchmark so benchstat has something to compare.
+BENCH ?= .
+BENCHCOUNT ?= 6
+BENCHFILE ?= bench.txt
+
 .PHONY: default
 default: build
 
@@ -14,6 +20,20 @@ build:
 .PHONY: test
 test:
 	go test -race -tags integration ./...
+
+.PHONY: bench
+bench:
+	go test -run '^$$' -bench '$(BENCH)' -benchmem -count=$(BENCHCOUNT) ./...
+
+# Save benchmark results to BENCHFILE (default bench.txt) for benchstat.
+.PHONY: bench-save
+bench-save:
+	go test -run '^$$' -bench '$(BENCH)' -benchmem -count=$(BENCHCOUNT) ./... | tee $(BENCHFILE)
+
+# Compare two saved runs: make benchstat OLD=base.txt NEW=bench.txt
+.PHONY: benchstat
+benchstat:
+	go tool benchstat $(OLD) $(NEW)
 
 .PHONY: fmt
 fmt:

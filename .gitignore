@@ -3,3 +3,8 @@ debug.test
 /bmecat
 /data
 /vendor
+
+# Benchmark result files (make bench-save)
+/bench.txt
+/base.txt
+/new.txt
