@@ -102,7 +102,7 @@ func TestReadGroupsDispatch(t *testing.T) {
 			if want, have := "10", cg.ID; want != have {
 				t.Errorf("want catalog group ID %q, have %q", want, have)
 			}
-			if want, have := "Hardware", cg.Name; want != have {
+			if want, have := "Hardware", cg.Name.Value(); want != have {
 				t.Errorf("want catalog group name %q, have %q", want, have)
 			}
 			if !cg.IsNode() {
@@ -332,7 +332,7 @@ func TestNeutralProductOrderAndDetailFields(t *testing.T) {
 			}
 
 			// Article/product details.
-			if want, have := "Type-X", p.ManufacturerTypeDescr; want != have {
+			if want, have := "Type-X", p.ManufacturerTypeDescr.Value(); want != have {
 				t.Errorf("ManufacturerTypeDescr = %q, want %q", have, want)
 			}
 			if want, have := "EGB", p.ERPGroupBuyer; want != have {
@@ -346,10 +346,10 @@ func TestNeutralProductOrderAndDetailFields(t *testing.T) {
 			} else if want, have := 5, *p.DeliveryTime; want != have {
 				t.Errorf("DeliveryTime = %d, want %d", have, want)
 			}
-			if want, have := "handle with care", p.Remarks; want != have {
+			if want, have := "handle with care", p.Remarks.Value(); want != have {
 				t.Errorf("Remarks = %q, want %q", have, want)
 			}
-			if want, have := []string{"seg-a"}, p.Segments; len(have) != 1 || have[0] != want[0] {
+			if want, have := []string{"seg-a"}, p.Segments.All(""); len(have) != 1 || have[0] != want[0] {
 				t.Errorf("Segments = %v, want %v", have, want)
 			}
 			if want, have := 1, len(p.BuyerIDs); want != have {

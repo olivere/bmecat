@@ -36,12 +36,12 @@ type MimeInfo struct {
 type Mime struct {
 	XMLName xml.Name `xml:"MIME"`
 
-	Type    string `xml:"MIME_TYPE,omitempty"`
-	Source  string `xml:"MIME_SOURCE"`
-	Descr   string `xml:"MIME_DESCR,omitempty"`
-	Alt     string `xml:"MIME_ALT,omitempty"`
-	Purpose string `xml:"MIME_PURPOSE,omitempty"`
-	Order   int    `xml:"MIME_ORDER,omitempty"`
+	Type    string           `xml:"MIME_TYPE,omitempty"`
+	Source  LocalizedStrings `xml:"MIME_SOURCE"`
+	Descr   LocalizedStrings `xml:"MIME_DESCR,omitempty"`
+	Alt     LocalizedStrings `xml:"MIME_ALT,omitempty"`
+	Purpose string           `xml:"MIME_PURPOSE,omitempty"`
+	Order   int              `xml:"MIME_ORDER,omitempty"`
 }
 
 // ThumbnailSource returns the URL of the thumbnail image.
@@ -49,7 +49,7 @@ type Mime struct {
 func (m *MimeInfo) ThumbnailSource() string {
 	for _, mime := range m.Mimes {
 		if mime.Purpose == MimePurposeThumbnail {
-			return mime.Source
+			return mime.Source.Value()
 		}
 	}
 	return ""
@@ -60,7 +60,7 @@ func (m *MimeInfo) ThumbnailSource() string {
 func (m *MimeInfo) NormalSource() string {
 	for _, mime := range m.Mimes {
 		if mime.Purpose == MimePurposeNormal {
-			return mime.Source
+			return mime.Source.Value()
 		}
 	}
 	return ""
@@ -71,7 +71,7 @@ func (m *MimeInfo) NormalSource() string {
 func (m *MimeInfo) DetailSource() string {
 	for _, mime := range m.Mimes {
 		if mime.Purpose == MimePurposeDetail {
-			return mime.Source
+			return mime.Source.Value()
 		}
 	}
 	return ""
@@ -82,7 +82,7 @@ func (m *MimeInfo) DetailSource() string {
 func (m *MimeInfo) DataSheetSource() string {
 	for _, mime := range m.Mimes {
 		if mime.Purpose == MimePurposeDataSheet {
-			return mime.Source
+			return mime.Source.Value()
 		}
 	}
 	return ""
@@ -93,7 +93,7 @@ func (m *MimeInfo) DataSheetSource() string {
 func (m *MimeInfo) LogoSource() string {
 	for _, mime := range m.Mimes {
 		if mime.Purpose == MimePurposeLogo {
-			return mime.Source
+			return mime.Source.Value()
 		}
 	}
 	return ""
@@ -104,7 +104,7 @@ func (m *MimeInfo) LogoSource() string {
 func (m *MimeInfo) IconSource() string {
 	for _, mime := range m.Mimes {
 		if mime.Purpose == MimePurposeIcon {
-			return mime.Source
+			return mime.Source.Value()
 		}
 	}
 	return ""
@@ -115,7 +115,7 @@ func (m *MimeInfo) IconSource() string {
 func (m *MimeInfo) SafetyDataSheetSource() string {
 	for _, mime := range m.Mimes {
 		if mime.Purpose == MimePurposeSafetyDataSheet {
-			return mime.Source
+			return mime.Source.Value()
 		}
 	}
 	return ""

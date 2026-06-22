@@ -23,6 +23,28 @@ The neutral model exposes the fields the two versions have in common. In
 particular [Product.GTIN] unifies the 1.2 EAN element and the 2005
 INTERNATIONAL_PID element behind a single accessor.
 
+BMEcat 2005 lets many text elements repeat once per language (the spec's
+dtMLSTRING type). Those neutral fields are [LocalizedStrings], keeping every
+variant in document order: [LocalizedStrings.Get] picks one by language (falling
+back to the first variant), [LocalizedStrings.Value] returns the first,
+[LocalizedStrings.All] returns every value for a language (for elements that
+repeat, such as KEYWORD), and [Localized] builds the common single-language
+value. Every element the 2005 schema types as dtMLSTRING is covered: on the
+neutral model the catalog name; product short/long description, manufacturer type
+description, keywords, remarks and segments; feature group name, feature names
+and values; MIME source and description — and, in the bmecat2005 package,
+additionally address parts, MIME alt, feature descriptions/value-details/variant
+values, catalog-group keywords, classification-group synonyms and classification
+system level names. Identifiers and codes typed as plain strings (e.g.
+MANUFACTURER_NAME, FUNIT, the classification system name) stay scalar.
+
+BMEcat 1.2 has no per-element lang attribute, so the bmecat12 structs stay
+scalar: reading 1.2 yields a single language-less variant, and writing the
+neutral model to 1.2 emits the variant matching the catalog language (falling
+back to the first), which is lossy for multi-language data. The lang attribute is
+written (in 2005) only for variants that set a language, so single-language
+catalogs round-trip unchanged.
+
 Prices are exposed two ways. [Product.Prices] is a flat list of every price
 block, convenient when the grouping does not matter. [Product.PriceDetails]
 preserves the ARTICLE_PRICE_DETAILS / PRODUCT_PRICE_DETAILS wrapper grouping,

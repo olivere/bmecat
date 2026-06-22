@@ -8,9 +8,9 @@ type ClassificationSystem struct {
 	XMLName xml.Name `xml:"CLASSIFICATION_SYSTEM"`
 
 	Name        string                           `xml:"CLASSIFICATION_SYSTEM_NAME"`
-	FullName    string                           `xml:"CLASSIFICATION_SYSTEM_FULLNAME,omitempty"`
+	FullName    LocalizedStrings                 `xml:"CLASSIFICATION_SYSTEM_FULLNAME,omitempty"`
 	Version     string                           `xml:"CLASSIFICATION_SYSTEM_VERSION,omitempty"`
-	Description string                           `xml:"CLASSIFICATION_SYSTEM_DESCR,omitempty"`
+	Description LocalizedStrings                 `xml:"CLASSIFICATION_SYSTEM_DESCR,omitempty"`
 	Levels      int                              `xml:"CLASSIFICATION_SYSTEM_LEVELS,omitempty"`
 	LevelNames  []*ClassificationSystemLevelName `xml:"CLASSIFICATION_SYSTEM_LEVEL_NAMES,omitempty"`
 	// ALLOWED_VALUES
@@ -27,7 +27,10 @@ func (cs *ClassificationSystem) IsBlank() bool {
 type ClassificationSystemLevelName struct {
 	XMLName xml.Name `xml:"CLASSIFICATION_SYSTEM_LEVEL_NAME"`
 
-	Level int    `xml:"level,attr"`
+	Level int `xml:"level,attr"`
+	// Lang is the xml lang attribute; CLASSIFICATION_SYSTEM_LEVEL_NAME is
+	// localized in 2005, so the same level may appear once per language.
+	Lang  string `xml:"lang,attr,omitempty"`
 	Value string `xml:",chardata"`
 }
 
@@ -37,15 +40,15 @@ type ClassificationGroup struct {
 	Type        string                       `xml:"type,attr,omitempty"`
 	Level       *int                         `xml:"level,attr,omitempty"`
 	ID          string                       `xml:"CLASSIFICATION_GROUP_ID"`
-	Name        string                       `xml:"CLASSIFICATION_GROUP_NAME"`
-	Description string                       `xml:"CLASSIFICATION_GROUP_DESCR,omitempty"`
+	Name        LocalizedStrings             `xml:"CLASSIFICATION_GROUP_NAME"`
+	Description LocalizedStrings             `xml:"CLASSIFICATION_GROUP_DESCR,omitempty"`
 	Synonyms    []ClassificationGroupSynonym `xml:"CLASSIFICATION_GROUP_SYNONYMS,omitempty"`
 	// CLASSIFICATION_GROUP_FEATURE_TEMPLATES
 	ParentID string `xml:"CLASSIFICATION_GROUP_PARENT_ID,omitempty"`
 }
 
 type ClassificationGroupSynonym struct {
-	Value string `xml:"SYNONYM,omitempty"`
+	Value LocalizedStrings `xml:"SYNONYM,omitempty"`
 }
 
 func (cg *ClassificationGroup) IsNode() bool {

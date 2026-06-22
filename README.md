@@ -54,7 +54,7 @@ func (handler) HandleHeader(h *bmecat.Header) error {
 }
 
 func (handler) HandleProduct(p *bmecat.Product) error {
-	fmt.Printf("Product %s: %s (GTIN %s)\n", p.ID, p.DescriptionShort, p.GTIN)
+	fmt.Printf("Product %s: %s (GTIN %s)\n", p.ID, p.DescriptionShort.Value(), p.GTIN)
 	return nil
 }
 
@@ -73,6 +73,36 @@ func main() {
 
 The neutral model exposes the fields 1.2 and 2005 share; in particular
 `Product.GTIN` unifies the 1.2 `EAN` and 2005 `INTERNATIONAL_PID` elements.
+
+BMEcat 2005 lets many text elements repeat once per language (the spec's
+`dtMLSTRING` type). Those fields are exposed as `LocalizedStrings`, preserving
+every variant in document order, so a consumer can pick the one matching a
+configured language with `p.DescriptionShort.Get("eng")` (which falls back to the
+first variant when the language is absent) or take the first with
+`p.DescriptionShort.Value()`. For elements that legitimately repeat (`KEYWORD`,
+`SEGMENT`, feature values), `p.Keywords.All("eng")` returns every value for a
+language. Build the common single-language value with `bmecat.Localized("Widget")`
+(it is variadic: `bmecat.Localized("a", "b")` builds a list). Every element the
+2005 schema types as `dtMLSTRING` is covered — on the neutral model the catalog
+name; product short/long description, manufacturer type description, keywords,
+remarks and segments; feature group name, feature names and values; MIME source
+and description — and, in the `bmecat2005` package, additionally address parts
+(name, street, city, …), MIME alt, feature descriptions/value-details/variant
+values, catalog-group keywords, classification-group synonyms and classification
+system level names. Identifiers and codes the schema types as plain strings (e.g.
+`MANUFACTURER_NAME`, `SUPPLIER_NAME`, `FUNIT`, the classification system name,
+`EMAIL`/`URL`) stay scalar.
+
+BMEcat 1.2 has no per-element `lang` attribute — it declares one catalog language
+in the header — so the `bmecat12` structs keep plain `string`/`[]string` fields.
+Reading a 1.2 document fills each `LocalizedStrings` with a single language-less
+variant; writing the neutral model to 1.2 emits the variant matching the
+catalog's language (falling back to the first), which is lossy for genuinely
+multi-language data. The `lang` attribute is written (in 2005) only for variants
+that set a language, so single-language catalogs round-trip unchanged.
+
+This replaced the former scalar fields: update reads such as `p.DescriptionShort`
+to `p.DescriptionShort.Value()` (or `.Get(lang)` / `.All(lang)`).
 Prices come both flattened (`Product.Prices`) and grouped by their
 `ARTICLE_PRICE_DETAILS` / `PRODUCT_PRICE_DETAILS` wrapper with validity dates
 (`Product.PriceDetails`), so you can pick the currently-valid block or spot a
@@ -124,7 +154,7 @@ func (handler) HandleHeader(h *bmecat12.Header) error {
 }
 
 func (handler) HandleArticle(a *bmecat12.Article) error {
-	fmt.Printf("Article %s: %s\n", a.SupplierAID, a.Details.DescriptionShort)
+	fmt.Printf("Article %s: %s\n", a.SupplierAID, a.Details.DescriptionShort.Value())
 	return nil
 }
 

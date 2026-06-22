@@ -322,7 +322,7 @@ func TestReadCharset(t *testing.T) {
 	if c.header == nil || c.header.Catalog == nil {
 		t.Fatal("want catalog header, have nil")
 	}
-	if want, have := "Müller", c.header.Catalog.Name; want != have {
+	if want, have := "Müller", c.header.Catalog.Name.Value(); want != have {
 		t.Errorf("want decoded catalog name %q, have %q", want, have)
 	}
 }

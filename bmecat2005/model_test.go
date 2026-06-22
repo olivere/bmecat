@@ -243,13 +243,13 @@ func TestAgreementStartEndDate(t *testing.T) {
 func TestMimeInfoSources(t *testing.T) {
 	mi := &MimeInfo{
 		Mimes: []*Mime{
-			{Purpose: MimePurposeThumbnail, Source: "thumb.jpg"},
-			{Purpose: MimePurposeNormal, Source: "normal.jpg"},
-			{Purpose: MimePurposeDetail, Source: "detail.jpg"},
-			{Purpose: MimePurposeDataSheet, Source: "sheet.pdf"},
-			{Purpose: MimePurposeLogo, Source: "logo.png"},
-			{Purpose: MimePurposeIcon, Source: "icon.png"},
-			{Purpose: MimePurposeSafetyDataSheet, Source: "safety.pdf"},
+			{Purpose: MimePurposeThumbnail, Source: Localized("thumb.jpg")},
+			{Purpose: MimePurposeNormal, Source: Localized("normal.jpg")},
+			{Purpose: MimePurposeDetail, Source: Localized("detail.jpg")},
+			{Purpose: MimePurposeDataSheet, Source: Localized("sheet.pdf")},
+			{Purpose: MimePurposeLogo, Source: Localized("logo.png")},
+			{Purpose: MimePurposeIcon, Source: Localized("icon.png")},
+			{Purpose: MimePurposeSafetyDataSheet, Source: Localized("safety.pdf")},
 		},
 	}
 	cases := []struct {

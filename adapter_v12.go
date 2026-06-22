@@ -76,8 +76,8 @@ func (a *v12Adapter) HandleCatalogGroup(cg *bmecat12.CatalogGroup) error {
 	return a.catalogGroup.HandleCatalogGroup(&CatalogGroup{
 		Type:        cg.Type,
 		ID:          cg.ID,
-		Name:        cg.Name,
-		Description: cg.Description,
+		Name:        localizedFromV12(cg.Name),
+		Description: localizedFromV12(cg.Description),
 		ParentID:    cg.ParentID,
 		Order:       cg.Order,
 	})
@@ -90,8 +90,8 @@ func (a *v12Adapter) HandleClassificationGroup(cg *bmecat12.ClassificationGroup)
 	return a.classifGroup.HandleClassificationGroup(&ClassificationGroup{
 		Type:        cg.Type,
 		ID:          cg.ID,
-		Name:        cg.Name,
-		Description: cg.Description,
+		Name:        localizedFromV12(cg.Name),
+		Description: localizedFromV12(cg.Description),
 		ParentID:    cg.ParentID,
 	})
 }
@@ -118,7 +118,7 @@ func convertV12Header(h *bmecat12.Header) *Header {
 			Language:    c.Language,
 			ID:          c.ID,
 			Version:     c.Version,
-			Name:        c.Name,
+			Name:        localizedFromV12(c.Name),
 			Currency:    c.Currency,
 			Territories: c.Territories,
 		}
@@ -149,18 +149,18 @@ func convertV12Product(a *bmecat12.Article) *Product {
 	}
 	if d := a.Details; d != nil {
 		out.GTIN = d.EAN
-		out.DescriptionShort = d.DescriptionShort
-		out.DescriptionLong = d.DescriptionLong
+		out.DescriptionShort = localizedFromV12(d.DescriptionShort)
+		out.DescriptionLong = localizedFromV12(d.DescriptionLong)
 		out.SupplierAltID = d.SupplierAltAID
 		out.ManufacturerID = d.ManufacturerAID
 		out.ManufacturerName = d.ManufacturerName
-		out.ManufacturerTypeDescr = d.ManufacturerTypeDescr
+		out.ManufacturerTypeDescr = localizedFromV12(d.ManufacturerTypeDescr)
 		out.ERPGroupBuyer = d.ERPGroupBuyer
 		out.ERPGroupSupplier = d.ERPGroupSupplier
 		out.DeliveryTime = d.DeliveryTime
-		out.Keywords = d.Keywords
-		out.Remarks = d.Remarks
-		out.Segments = d.Segments
+		out.Keywords = localizedSliceFromV12(d.Keywords)
+		out.Remarks = localizedFromV12(d.Remarks)
+		out.Segments = localizedSliceFromV12(d.Segments)
 		for _, b := range d.BuyerAIDs {
 			if b != nil {
 				out.BuyerIDs = append(out.BuyerIDs, &TypedValue{Type: b.Type, Value: b.Value})
@@ -202,14 +202,33 @@ func convertV12Product(a *bmecat12.Article) *Product {
 		for _, m := range mi.Mimes {
 			out.Mimes = append(out.Mimes, &Mime{
 				Type:    m.Type,
-				Source:  m.Source,
-				Descr:   m.Descr,
+				Source:  localizedFromV12(m.Source),
+				Descr:   localizedFromV12(m.Descr),
 				Purpose: m.Purpose,
 				Order:   m.Order,
 			})
 		}
 	}
 	return out
+}
+
+// localizedFromV12 lifts a scalar BMEcat 1.2 value into the neutral
+// LocalizedStrings. BMEcat 1.2 has no per-element lang attribute, so the result
+// carries a single language-less variant (or nil for an empty value).
+func localizedFromV12(s string) LocalizedStrings {
+	if s == "" {
+		return nil
+	}
+	return Localized(s)
+}
+
+// localizedSliceFromV12 lifts a list of scalar BMEcat 1.2 values (e.g. KEYWORD)
+// into the neutral LocalizedStrings, each as a language-less variant.
+func localizedSliceFromV12(values []string) LocalizedStrings {
+	if len(values) == 0 {
+		return nil
+	}
+	return Localized(values...)
 }
 
 func convertV12PriceDetails(pd *bmecat12.ArticlePriceDetails) *PriceDetails {
@@ -263,12 +282,12 @@ func convertV12Features(f *bmecat12.ArticleFeatures) *Features {
 	out := &Features{
 		SystemName: f.FeatureSystemName,
 		GroupID:    f.FeatureGroupID,
-		GroupName:  f.FeatureGroupName,
+		GroupName:  localizedFromV12(f.FeatureGroupName),
 	}
 	for _, ft := range f.Features {
 		out.Features = append(out.Features, &Feature{
-			Name:   ft.Name,
-			Values: ft.Values,
+			Name:   localizedFromV12(ft.Name),
+			Values: localizedSliceFromV12(ft.Values),
 			Unit:   ft.Unit,
 		})
 	}

@@ -131,7 +131,7 @@ func TestReadCatalogGroupDispatch(t *testing.T) {
 	if want, have := "1", cg.ID; want != have {
 		t.Errorf("want group ID %q, have %q", want, have)
 	}
-	if want, have := "Hardware", cg.Name; want != have {
+	if want, have := "Hardware", cg.Name.Value(); want != have {
 		t.Errorf("want group name %q, have %q", want, have)
 	}
 	if !cg.IsNode() {
@@ -193,7 +193,7 @@ func TestReadISO8859_1(t *testing.T) {
 	if want, have := 1, len(h.catalogGroups); want != have {
 		t.Fatalf("want %d catalog group(s), have %d", want, have)
 	}
-	if want, have := "Müller", h.catalogGroups[0].Name; want != have {
+	if want, have := "Müller", h.catalogGroups[0].Name.Value(); want != have {
 		t.Errorf("want decoded group name %q, have %q", want, have)
 	}
 }
@@ -222,7 +222,7 @@ func TestReadGBKChinese(t *testing.T) {
 	if want, have := 1, len(h.catalogGroups); want != have {
 		t.Fatalf("want %d catalog group(s), have %d", want, have)
 	}
-	if want, have := "电子产品", h.catalogGroups[0].Name; want != have {
+	if want, have := "电子产品", h.catalogGroups[0].Name.Value(); want != have {
 		t.Errorf("want decoded group name %q, have %q", want, have)
 	}
 }
@@ -252,7 +252,7 @@ func TestReaderProgress(t *testing.T) {
 
 func TestWriterProgress(t *testing.T) {
 	products := []*bmecat2005.Product{
-		{SupplierPID: "1000", Details: &bmecat2005.ProductDetails{DescriptionShort: "Test"}},
+		{SupplierPID: "1000", Details: &bmecat2005.ProductDetails{DescriptionShort: bmecat2005.Localized("Test")}},
 	}
 	cw := catalogWriter{tx: bmecat2005.NewCatalog, header: testHeader, products: products}
 
@@ -315,7 +315,7 @@ func TestRoundTrip(t *testing.T) {
 	if h.header == nil {
 		t.Fatal("want a header after round trip, have nil")
 	}
-	if want, have := testHeader.Catalog.Name, h.header.Catalog.Name; want != have {
+	if want, have := testHeader.Catalog.Name.Value(), h.header.Catalog.Name.Value(); want != have {
 		t.Errorf("want catalog name %q, have %q", want, have)
 	}
 	if want, have := 1, len(h.products); want != have {

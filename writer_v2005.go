@@ -124,9 +124,9 @@ func neutralClassificationSystemToV2005(cs *ClassificationSystem) *bmecat2005.Cl
 	}
 	out := &bmecat2005.ClassificationSystem{
 		Name:        cs.Name,
-		FullName:    cs.FullName,
+		FullName:    localizedToV2005(cs.FullName),
 		Version:     cs.Version,
-		Description: cs.Description,
+		Description: localizedToV2005(cs.Description),
 		Levels:      cs.Levels,
 	}
 	for _, ln := range cs.LevelNames {
@@ -135,6 +135,7 @@ func neutralClassificationSystemToV2005(cs *ClassificationSystem) *bmecat2005.Cl
 		}
 		out.LevelNames = append(out.LevelNames, &bmecat2005.ClassificationSystemLevelName{
 			Level: ln.Level,
+			Lang:  ln.Lang,
 			Value: ln.Name,
 		})
 	}
@@ -145,8 +146,8 @@ func neutralClassificationSystemToV2005(cs *ClassificationSystem) *bmecat2005.Cl
 		out.Groups = append(out.Groups, &bmecat2005.ClassificationGroup{
 			Type:        g.Type,
 			ID:          g.ID,
-			Name:        g.Name,
-			Description: g.Description,
+			Name:        localizedToV2005(g.Name),
+			Description: localizedToV2005(g.Description),
 			ParentID:    g.ParentID,
 		})
 	}
@@ -163,7 +164,7 @@ func neutralHeaderToV2005(h *Header) *bmecat2005.Header {
 			Language:    c.Language,
 			ID:          c.ID,
 			Version:     c.Version,
-			Name:        c.Name,
+			Name:        localizedToV2005(c.Name),
 			Currency:    c.Currency,
 			Territories: c.Territories,
 		}
@@ -183,23 +184,36 @@ func neutralHeaderToV2005(h *Header) *bmecat2005.Header {
 	return out
 }
 
+// localizedToV2005 converts a neutral LocalizedStrings into the bmecat2005 one,
+// preserving variant order and language.
+func localizedToV2005(in LocalizedStrings) bmecat2005.LocalizedStrings {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(bmecat2005.LocalizedStrings, len(in))
+	for i, ls := range in {
+		out[i] = bmecat2005.LocalizedString{Lang: ls.Lang, Value: ls.Value}
+	}
+	return out
+}
+
 func neutralProductToV2005(p *Product) *bmecat2005.Product {
 	prod := &bmecat2005.Product{
 		Mode:        p.Mode,
 		SupplierPID: p.ID,
 		Details: &bmecat2005.ProductDetails{
-			DescriptionShort:      p.DescriptionShort,
-			DescriptionLong:       p.DescriptionLong,
+			DescriptionShort:      localizedToV2005(p.DescriptionShort),
+			DescriptionLong:       localizedToV2005(p.DescriptionLong),
 			SupplierAltPID:        p.SupplierAltID,
 			ManufacturerPID:       p.ManufacturerID,
 			ManufacturerName:      p.ManufacturerName,
-			ManufacturerTypeDescr: p.ManufacturerTypeDescr,
+			ManufacturerTypeDescr: localizedToV2005(p.ManufacturerTypeDescr),
 			ERPGroupBuyer:         p.ERPGroupBuyer,
 			ERPGroupSupplier:      p.ERPGroupSupplier,
 			DeliveryTime:          p.DeliveryTime,
-			Keywords:              p.Keywords,
-			Remarks:               p.Remarks,
-			Segments:              p.Segments,
+			Keywords:              localizedToV2005(p.Keywords),
+			Remarks:               localizedToV2005(p.Remarks),
+			Segments:              localizedToV2005(p.Segments),
 		},
 	}
 	// GTIN maps to INTERNATIONAL_PID (the 2005 replacement for EAN); the reader
@@ -259,12 +273,12 @@ func neutralFeaturesToV2005(f *Features) *bmecat2005.ProductFeatures {
 	out := &bmecat2005.ProductFeatures{
 		FeatureSystemName: f.SystemName,
 		FeatureGroupID:    f.GroupID,
-		FeatureGroupName:  f.GroupName,
+		FeatureGroupName:  localizedToV2005(f.GroupName),
 	}
 	for _, ft := range f.Features {
 		out.Features = append(out.Features, &bmecat2005.Feature{
-			Name:   ft.Name,
-			Values: ft.Values,
+			Name:   localizedToV2005(ft.Name),
+			Values: localizedToV2005(ft.Values),
 			Unit:   ft.Unit,
 		})
 	}
@@ -341,8 +355,8 @@ func neutralMimesToV2005(mimes []*Mime) *bmecat2005.MimeInfo {
 	for _, m := range mimes {
 		mi.Mimes = append(mi.Mimes, &bmecat2005.Mime{
 			Type:    m.Type,
-			Source:  m.Source,
-			Descr:   m.Descr,
+			Source:  localizedToV2005(m.Source),
+			Descr:   localizedToV2005(m.Descr),
 			Purpose: m.Purpose,
 			Order:   m.Order,
 		})
