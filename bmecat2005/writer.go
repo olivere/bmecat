@@ -109,10 +109,9 @@ type WriteProgress func(written int)
 func (w *Writer) txStartElement(writer CatalogWriter) xml.StartElement {
 	tx := writer.Transaction().String()
 	attr := []xml.Attr{}
+	// Both update transactions carry prev_version; a new catalog does not.
 	switch writer.Transaction() {
-	case UpdateProducts:
-		attr = append(attr, xml.Attr{Name: xml.Name{Local: "prev_version"}, Value: fmt.Sprint(writer.PreviousVersion())})
-	case UpdatePrices:
+	case UpdateProducts, UpdatePrices:
 		attr = append(attr, xml.Attr{Name: xml.Name{Local: "prev_version"}, Value: fmt.Sprint(writer.PreviousVersion())})
 	}
 	return xml.StartElement{Name: xml.Name{Local: tx}, Attr: attr}

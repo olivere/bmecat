@@ -221,18 +221,22 @@ func neutralProductToV2005(p *Product) *bmecat2005.Product {
 	if p.GTIN != "" {
 		prod.Details.InternationalPIDs = []*bmecat2005.InternationalPID{{Type: "gtin", Value: p.GTIN}}
 	}
+	prod.Details.BuyerPIDs = make([]*bmecat2005.BuyerPID, 0, len(p.BuyerIDs))
 	for _, b := range p.BuyerIDs {
 		prod.Details.BuyerPIDs = append(prod.Details.BuyerPIDs, &bmecat2005.BuyerPID{Type: b.Type, Value: b.Value})
 	}
+	prod.Details.SpecialTreatmentClasses = make([]*bmecat2005.ProductSpecialTreatmentClass, 0, len(p.SpecialTreatmentClasses))
 	for _, s := range p.SpecialTreatmentClasses {
 		prod.Details.SpecialTreatmentClasses = append(prod.Details.SpecialTreatmentClasses, &bmecat2005.ProductSpecialTreatmentClass{Type: s.Type, Value: s.Value})
 	}
+	prod.Details.ProductStatus = make([]*bmecat2005.ProductStatus, 0, len(p.Status))
 	for _, s := range p.Status {
 		prod.Details.ProductStatus = append(prod.Details.ProductStatus, &bmecat2005.ProductStatus{Type: s.Type, Value: s.Value})
 	}
 	if od := neutralOrderDetailsToV2005(p); od != nil {
 		prod.OrderDetails = od
 	}
+	prod.Features = make([]*bmecat2005.ProductFeatures, 0, len(p.Features))
 	for _, f := range p.Features {
 		prod.Features = append(prod.Features, neutralFeaturesToV2005(f))
 	}
@@ -275,6 +279,7 @@ func neutralFeaturesToV2005(f *Features) *bmecat2005.ProductFeatures {
 		FeatureGroupID:    f.GroupID,
 		FeatureGroupName:  localizedToV2005(f.GroupName),
 	}
+	out.Features = make([]*bmecat2005.Feature, 0, len(f.Features))
 	for _, ft := range f.Features {
 		out.Features = append(out.Features, &bmecat2005.Feature{
 			Name:   localizedToV2005(ft.Name),
@@ -292,7 +297,7 @@ func neutralFeaturesToV2005(f *Features) *bmecat2005.ProductFeatures {
 // the previous behavior. It returns nil when the product has no prices at all.
 func neutralPriceDetailsToV2005(p *Product) []*bmecat2005.ProductPriceDetails {
 	if len(p.PriceDetails) > 0 {
-		var out []*bmecat2005.ProductPriceDetails
+		out := make([]*bmecat2005.ProductPriceDetails, 0, len(p.PriceDetails))
 		for _, pd := range p.PriceDetails {
 			if pd == nil {
 				continue
@@ -351,7 +356,7 @@ func neutralMimesToV2005(mimes []*Mime) *bmecat2005.MimeInfo {
 	if len(mimes) == 0 {
 		return nil
 	}
-	mi := &bmecat2005.MimeInfo{}
+	mi := &bmecat2005.MimeInfo{Mimes: make([]*bmecat2005.Mime, 0, len(mimes))}
 	for _, m := range mimes {
 		mi.Mimes = append(mi.Mimes, &bmecat2005.Mime{
 			Type:    m.Type,

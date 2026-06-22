@@ -239,18 +239,22 @@ func neutralProductToV12(p *Product, lang string) *bmecat12.Article {
 			Segments:              mlSliceToV12(p.Segments, lang),
 		},
 	}
+	a.Details.BuyerAIDs = make([]*bmecat12.BuyerAID, 0, len(p.BuyerIDs))
 	for _, b := range p.BuyerIDs {
 		a.Details.BuyerAIDs = append(a.Details.BuyerAIDs, &bmecat12.BuyerAID{Type: b.Type, Value: b.Value})
 	}
+	a.Details.SpecialTreatmentClasses = make([]*bmecat12.ArticleSpecialTreatmentClass, 0, len(p.SpecialTreatmentClasses))
 	for _, s := range p.SpecialTreatmentClasses {
 		a.Details.SpecialTreatmentClasses = append(a.Details.SpecialTreatmentClasses, &bmecat12.ArticleSpecialTreatmentClass{Type: s.Type, Value: s.Value})
 	}
+	a.Details.ArticleStatus = make([]*bmecat12.ArticleStatus, 0, len(p.Status))
 	for _, s := range p.Status {
 		a.Details.ArticleStatus = append(a.Details.ArticleStatus, &bmecat12.ArticleStatus{Type: s.Type, Value: s.Value})
 	}
 	if od := neutralOrderDetailsToV12(p); od != nil {
 		a.OrderDetails = od
 	}
+	a.Features = make([]*bmecat12.ArticleFeatures, 0, len(p.Features))
 	for _, f := range p.Features {
 		a.Features = append(a.Features, neutralFeaturesToV12(f, lang))
 	}
@@ -291,6 +295,7 @@ func neutralFeaturesToV12(f *Features, lang string) *bmecat12.ArticleFeatures {
 		FeatureGroupID:    f.GroupID,
 		FeatureGroupName:  mlToV12(f.GroupName, lang),
 	}
+	out.Features = make([]*bmecat12.Feature, 0, len(f.Features))
 	for _, ft := range f.Features {
 		out.Features = append(out.Features, &bmecat12.Feature{
 			Name:   mlToV12(ft.Name, lang),
@@ -308,7 +313,7 @@ func neutralFeaturesToV12(f *Features, lang string) *bmecat12.ArticleFeatures {
 // the previous behavior. It returns nil when the product has no prices at all.
 func neutralPriceDetailsToV12(p *Product) []*bmecat12.ArticlePriceDetails {
 	if len(p.PriceDetails) > 0 {
-		var out []*bmecat12.ArticlePriceDetails
+		out := make([]*bmecat12.ArticlePriceDetails, 0, len(p.PriceDetails))
 		for _, pd := range p.PriceDetails {
 			if pd == nil {
 				continue
@@ -367,7 +372,7 @@ func neutralMimesToV12(mimes []*Mime, lang string) *bmecat12.MimeInfo {
 	if len(mimes) == 0 {
 		return nil
 	}
-	mi := &bmecat12.MimeInfo{}
+	mi := &bmecat12.MimeInfo{Mimes: make([]*bmecat12.Mime, 0, len(mimes))}
 	for _, m := range mimes {
 		mi.Mimes = append(mi.Mimes, &bmecat12.Mime{
 			Type:    m.Type,

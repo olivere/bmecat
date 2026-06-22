@@ -102,46 +102,26 @@ type Agreement struct {
 	Dates   []*DateTime `xml:"DATETIME,omitempty"`
 }
 
-func (a *Agreement) StartDate() time.Time {
-	var date *DateTime
-
+// dateByType returns the parsed AGREEMENT DATETIME of the given type, falling
+// back to def when the agreement carries no such date or it cannot be parsed.
+func (a *Agreement) dateByType(typ string, def time.Time) time.Time {
 	for _, d := range a.Dates {
-		if d.Type == DateTimeAgreementStartDate {
-			date = d
+		if d.Type == typ {
+			if t, err := d.Time(); err == nil {
+				return t
+			}
 			break
 		}
 	}
+	return def
+}
 
-	if date == nil {
-		return DefaultStartDate
-	}
-
-	time, err := date.Time()
-	if err != nil {
-		return DefaultStartDate
-	}
-	return time
+func (a *Agreement) StartDate() time.Time {
+	return a.dateByType(DateTimeAgreementStartDate, DefaultStartDate)
 }
 
 func (a *Agreement) EndDate() time.Time {
-	var date *DateTime
-
-	for _, d := range a.Dates {
-		if d.Type == DateTimeAgreementEndDate {
-			date = d
-			break
-		}
-	}
-
-	if date == nil {
-		return DefaultEndDate
-	}
-
-	time, err := date.Time()
-	if err != nil {
-		return DefaultEndDate
-	}
-	return time
+	return a.dateByType(DateTimeAgreementEndDate, DefaultEndDate)
 }
 
 type Supplier struct {

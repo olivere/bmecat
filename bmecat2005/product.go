@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 // Product represents a product according to the BMEcat 2005 specification.
@@ -103,9 +102,8 @@ func (pf ProductFeatures) IsUnspsc() bool {
 }
 
 func (pf ProductFeatures) Version() string {
-	parts := strings.SplitN(pf.FeatureSystemName, "-", 2)
-	if len(parts) == 2 && utf8.RuneCountInString(parts[1]) > 0 {
-		return parts[1]
+	if _, version, ok := strings.Cut(pf.FeatureSystemName, "-"); ok {
+		return version
 	}
 	return ""
 }
