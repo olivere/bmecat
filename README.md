@@ -105,8 +105,10 @@ This replaced the former scalar fields: update reads such as `p.DescriptionShort
 to `p.DescriptionShort.Value()` (or `.Get(lang)` / `.All(lang)`).
 Prices come both flattened (`Product.Prices`) and grouped by their
 `ARTICLE_PRICE_DETAILS` / `PRODUCT_PRICE_DETAILS` wrapper with validity dates
-(`Product.PriceDetails`), so you can pick the currently-valid block or spot a
-price calendar. Runnable examples are in the
+(`Product.PriceDetails`). Helpers pick the block valid at a time with
+`p.CurrentPriceDetails(at)` (or `p.ValidPriceDetails(at)` to spot a price
+calendar of overlapping windows) and select a quantity tier within a block with
+`pd.PriceFor(quantity, priceType)`. Runnable examples are in the
 [package documentation](https://pkg.go.dev/github.com/olivere/bmecat#pkg-examples).
 
 To gate on the document-level transaction — for example to accept only full
@@ -227,6 +229,22 @@ covers those; version-specific fidelity needs the version packages below. The
 neutral writer also does not emit catalog-group mappings (neither version writer
 does).
 
+To emit a `CLASSIFICATION_SYSTEM` (e.g. an eCl@ss or supplier classification
+tree) ahead of the product stream, pass it as configuration with
+`WithClassificationSystem`. Because it is bounded and known up front, it is given
+once rather than streamed; it is written only for a `T_NEW_CATALOG` transaction
+and omitted when blank:
+
+```go
+w := bmecat.NewWriter(out,
+	bmecat.WithVersion(bmecat.Version2005),
+	bmecat.WithClassificationSystem(&bmecat.ClassificationSystem{
+		Name:   "ECLASS-5.1",
+		Groups: groups, // []*bmecat.ClassificationGroup
+	}),
+)
+```
+
 ### Version-specific writing
 
 For full, version-specific fidelity, implement the `CatalogWriter` interface of
@@ -287,8 +305,42 @@ make fmt         # format the code with gofumpt
 make lint        # check formatting and run go vet
 make vulncheck   # scan for known vulnerabilities
 make modernize   # apply modern Go idioms
+make bench       # run the benchmarks
 make check       # lint + test + vulncheck
 ```
+
+### Benchmarks
+
+The package ships read and write benchmarks for both BMEcat versions, streaming
+a content-rich catalog through the neutral facade so the per-product conversion
+path is what is measured. Run them with:
+
+```sh
+make bench                       # all benchmarks, six samples each
+make bench BENCH=Write           # only benchmarks matching "Write"
+make bench BENCHCOUNT=10         # more samples for a tighter estimate
+```
+
+To measure a change against a baseline, save a run before and after, then
+compare them with [benchstat](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat)
+(managed as a Go tool dependency, so no separate install is needed):
+
+```sh
+# 1. Baseline: stash your change and record the current numbers.
+git stash
+make bench-save BENCHFILE=base.txt
+git stash pop
+
+# 2. Your change: record the new numbers.
+make bench-save BENCHFILE=new.txt
+
+# 3. Compare. benchstat reports the delta and whether it is significant.
+make benchstat OLD=base.txt NEW=new.txt
+```
+
+benchstat needs at least six samples per benchmark for a confidence interval,
+which is why `BENCHCOUNT` defaults to six. A `~` in the output means the change
+was not statistically significant.
 
 ## License
 
