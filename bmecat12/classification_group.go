@@ -7,12 +7,12 @@ import (
 type ClassificationSystem struct {
 	XMLName xml.Name `xml:"CLASSIFICATION_SYSTEM"`
 
-	Name        string                           `xml:"CLASSIFICATION_SYSTEM_NAME"`
-	FullName    string                           `xml:"CLASSIFICATION_SYSTEM_FULLNAME,omitempty"`
-	Version     string                           `xml:"CLASSIFICATION_SYSTEM_VERSION,omitempty"`
-	Description string                           `xml:"CLASSIFICATION_SYSTEM_DESCR,omitempty"`
-	Levels      int                              `xml:"CLASSIFICATION_SYSTEM_LEVELS,omitempty"`
-	LevelNames  []*ClassificationSystemLevelName `xml:"CLASSIFICATION_SYSTEM_LEVEL_NAMES,omitempty"`
+	Name        string                         `xml:"CLASSIFICATION_SYSTEM_NAME"`
+	FullName    string                         `xml:"CLASSIFICATION_SYSTEM_FULLNAME,omitempty"`
+	Version     string                         `xml:"CLASSIFICATION_SYSTEM_VERSION,omitempty"`
+	Description string                         `xml:"CLASSIFICATION_SYSTEM_DESCR,omitempty"`
+	Levels      int                            `xml:"CLASSIFICATION_SYSTEM_LEVELS,omitempty"`
+	LevelNames  ClassificationSystemLevelNames `xml:"CLASSIFICATION_SYSTEM_LEVEL_NAMES,omitempty"`
 	// ALLOWED_VALUES
 	// UNITS
 	// CLASSIFICATION_SYSTEM_FEATURE_TEMPLATES
@@ -22,6 +22,33 @@ type ClassificationSystem struct {
 // IsBlank returns true if there are no groups in the classification system.
 func (cs *ClassificationSystem) IsBlank() bool {
 	return cs == nil || len(cs.Groups) == 0
+}
+
+// ClassificationSystemLevelNames is the CLASSIFICATION_SYSTEM_LEVEL_NAMES
+// wrapper around the CLASSIFICATION_SYSTEM_LEVEL_NAME list. It marshals the
+// wrapper only when it holds entries, so an empty list emits nothing (the DTD
+// requires at least one name inside the wrapper).
+type ClassificationSystemLevelNames []*ClassificationSystemLevelName
+
+func (s ClassificationSystemLevelNames) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	if len(s) == 0 {
+		return nil
+	}
+	type wrapper struct {
+		Names []*ClassificationSystemLevelName `xml:"CLASSIFICATION_SYSTEM_LEVEL_NAME"`
+	}
+	return e.EncodeElement(wrapper{Names: s}, start)
+}
+
+func (s *ClassificationSystemLevelNames) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var w struct {
+		Names []*ClassificationSystemLevelName `xml:"CLASSIFICATION_SYSTEM_LEVEL_NAME"`
+	}
+	if err := d.DecodeElement(&w, &start); err != nil {
+		return err
+	}
+	*s = w.Names
+	return nil
 }
 
 type ClassificationSystemLevelName struct {

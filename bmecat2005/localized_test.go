@@ -174,17 +174,28 @@ func TestNewLocalizedFieldsRoundTrip(t *testing.T) {
 		}
 	})
 
-	t.Run("level name carries lang", func(t *testing.T) {
-		// NOTE: ClassificationSystemLevelName round-trips only one direction here
-		// because of a pre-existing wrapper/XMLName mismatch on the LevelNames
-		// field (see follow-up); we assert the lang attribute is emitted.
-		in := &bmecat2005.ClassificationSystemLevelName{Level: 1, Lang: "eng", Value: "Main group"}
+	t.Run("level names round trip with lang", func(t *testing.T) {
+		in := &bmecat2005.ClassificationSystem{
+			Name: "udf-1.0",
+			LevelNames: []*bmecat2005.ClassificationSystemLevelName{
+				{Level: 1, Lang: "deu", Value: "Hauptgruppe"},
+				{Level: 1, Lang: "eng", Value: "Main group"},
+			},
+		}
 		b, err := xml.Marshal(in)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := string(b); !strings.Contains(got, `lang="eng"`) || !strings.Contains(got, ">Main group<") {
-			t.Errorf("level name marshal = %s, want lang and value", got)
+		// The level names must be wrapped in CLASSIFICATION_SYSTEM_LEVEL_NAMES.
+		if !strings.Contains(string(b), "<CLASSIFICATION_SYSTEM_LEVEL_NAMES>") {
+			t.Errorf("missing CLASSIFICATION_SYSTEM_LEVEL_NAMES wrapper:\n%s", b)
+		}
+		var out bmecat2005.ClassificationSystem
+		if err := xml.Unmarshal(b, &out); err != nil {
+			t.Fatal(err)
+		}
+		if len(out.LevelNames) != 2 || out.LevelNames[1].Lang != "eng" || out.LevelNames[1].Value != "Main group" {
+			t.Errorf("level names round trip = %+v", out.LevelNames)
 		}
 	})
 }
