@@ -139,6 +139,11 @@ func convertV2005Product(p *bmecat2005.Product) *Product {
 	}
 	if d := p.Details; d != nil {
 		out.GTIN = gtinFromV2005(d)
+		for _, pid := range d.InternationalPIDs {
+			if pid != nil {
+				out.PIDs = append(out.PIDs, &TypedValue{Type: pid.Type, Value: pid.Value})
+			}
+		}
 		out.DescriptionShort = localizedFromV2005(d.DescriptionShort)
 		out.DescriptionLong = localizedFromV2005(d.DescriptionLong)
 		out.SupplierAltID = d.SupplierAltPID

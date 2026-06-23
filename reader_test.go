@@ -193,6 +193,12 @@ func TestReadEquivalence(t *testing.T) {
 		t.Errorf("neutral headers differ:\n 1.2: %+v\n2005: %+v", c12.header, c2005.header)
 	}
 
+	// PIDs is 2005-only (1.2 has a single untyped EAN exposed through GTIN);
+	// clear it so the rest of the neutral product can be compared. Both versions
+	// still resolve the same GTIN.
+	for _, p := range c2005.products {
+		p.PIDs = nil
+	}
 	if !reflect.DeepEqual(c12.products, c2005.products) {
 		t.Errorf("neutral products differ:\n 1.2: %+v\n2005: %+v", c12.products[0], c2005.products[0])
 	}
