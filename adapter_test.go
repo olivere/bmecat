@@ -381,3 +381,68 @@ func TestNeutralProductOrderAndDetailFields(t *testing.T) {
 		})
 	}
 }
+
+// TestNeutralGTINFromV2005 verifies that the 2005 adapter resolves Product.GTIN
+// from the INTERNATIONAL_PID whose type is gtin/ean, rather than blindly taking
+// the first PID. See issue #51.
+func TestNeutralGTINFromV2005(t *testing.T) {
+	doc := func(pids, ean string) string {
+		return `<?xml version="1.0" encoding="UTF-8"?>
+<BMECAT version="2005" xmlns="http://www.bmecat.org/bmecat/2005">
+  <HEADER><CATALOG><LANGUAGE>eng</LANGUAGE><CATALOG_ID>C</CATALOG_ID><CATALOG_VERSION>1</CATALOG_VERSION></CATALOG></HEADER>
+  <T_NEW_CATALOG>
+    <PRODUCT>
+      <SUPPLIER_PID>P1</SUPPLIER_PID>
+      <PRODUCT_DETAILS>
+        <DESCRIPTION_SHORT>Widget</DESCRIPTION_SHORT>
+        ` + pids + ean + `
+      </PRODUCT_DETAILS>
+    </PRODUCT>
+  </T_NEW_CATALOG>
+</BMECAT>`
+	}
+	for _, tt := range []struct {
+		name string
+		pids string
+		ean  string
+		want string
+	}{
+		{
+			name: "typed gtin preceded by non-gtin PID",
+			pids: `<INTERNATIONAL_PID type="supplier_specific">ACME-001</INTERNATIONAL_PID>
+        <INTERNATIONAL_PID type="gtin">4006381333931</INTERNATIONAL_PID>`,
+			want: "4006381333931",
+		},
+		{
+			name: "typed ean preferred over leading non-gtin PID",
+			pids: `<INTERNATIONAL_PID type="supplier_specific">ACME-001</INTERNATIONAL_PID>
+        <INTERNATIONAL_PID type="EAN">4006381333931</INTERNATIONAL_PID>`,
+			want: "4006381333931",
+		},
+		{
+			name: "untyped PID falls back to first non-empty",
+			pids: `<INTERNATIONAL_PID>4006381333931</INTERNATIONAL_PID>`,
+			want: "4006381333931",
+		},
+		{
+			name: "no typed gtin/ean falls back to first PID",
+			pids: `<INTERNATIONAL_PID type="supplier_specific">ACME-001</INTERNATIONAL_PID>`,
+			want: "ACME-001",
+		},
+		{
+			name: "legacy EAN element when no PID present",
+			ean:  `<EAN>4006381333931</EAN>`,
+			want: "4006381333931",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := read(t, doc(tt.pids, tt.ean))
+			if want, have := 1, len(c.products); want != have {
+				t.Fatalf("want %d product(s), have %d", want, have)
+			}
+			if want, have := tt.want, c.products[0].GTIN; want != have {
+				t.Errorf("GTIN = %q, want %q", have, want)
+			}
+		})
+	}
+}

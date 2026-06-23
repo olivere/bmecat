@@ -127,8 +127,9 @@ type Product struct {
 	// Mode is the product's transaction mode ("new", "update" or "delete").
 	// It is typically only set in T_UPDATE_PRODUCTS catalogs.
 	Mode string
-	// GTIN is the global trade item number: EAN (1.2) or the first
-	// INTERNATIONAL_PID (2005). See GTIN handling in the package docs.
+	// GTIN is the global trade item number: EAN (1.2) or the gtin/ean-typed
+	// INTERNATIONAL_PID (2005), falling back to the first PID or legacy EAN.
+	// See GTIN handling in the package docs.
 	GTIN string
 
 	// DescriptionShort and DescriptionLong are DESCRIPTION_SHORT /
