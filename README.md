@@ -72,7 +72,9 @@ func main() {
 ```
 
 The neutral model exposes the fields 1.2 and 2005 share; in particular
-`Product.GTIN` unifies the 1.2 `EAN` and 2005 `INTERNATIONAL_PID` elements.
+`Product.GTIN` unifies the 1.2 `EAN` and 2005 `INTERNATIONAL_PID` elements. For
+2005 documents with more than one `INTERNATIONAL_PID`, `Product.PIDs` preserves
+every typed identifier so a read-modify-write keeps them all.
 
 BMEcat 2005 lets many text elements repeat once per language (the spec's
 `dtMLSTRING` type). Those fields are exposed as `LocalizedStrings`, preserving

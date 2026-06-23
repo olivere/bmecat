@@ -131,6 +131,15 @@ type Product struct {
 	// INTERNATIONAL_PID (2005), falling back to the first PID or legacy EAN.
 	// See GTIN handling in the package docs.
 	GTIN string
+	// PIDs holds every INTERNATIONAL_PID (2005) with its type attribute, in
+	// document order. It is populated only for BMEcat 2005; 1.2 has a single,
+	// untyped EAN element exposed through GTIN alone, so PIDs is nil there.
+	// GTIN remains the convenience accessor for the gtin/ean-typed value.
+	//
+	// On the 2005 write path PIDs takes precedence: when non-empty it is
+	// emitted verbatim and GTIN is ignored; otherwise a single gtin-typed
+	// INTERNATIONAL_PID is written from GTIN.
+	PIDs []*TypedValue
 
 	// DescriptionShort and DescriptionLong are DESCRIPTION_SHORT /
 	// DESCRIPTION_LONG. They hold every language variant the source document

@@ -159,6 +159,11 @@ func TestWriteReadRoundTrip(t *testing.T) {
 			if len(c.products) != 1 {
 				t.Fatalf("want one product, have %d", len(c.products))
 			}
+			// PIDs is version-specific: 2005 reads GTIN back as a gtin-typed
+			// INTERNATIONAL_PID, 1.2 has no typed PID. Normalise before comparing
+			// the shared product; multi-PID round trips are covered by
+			// TestWritePIDs.
+			c.products[0].PIDs = nil
 			if !reflect.DeepEqual(product, c.products[0]) {
 				t.Errorf("product round trip mismatch:\nwant %+v\nhave %+v", product, c.products[0])
 			}
@@ -242,6 +247,60 @@ func TestWriteQuantityMax(t *testing.T) {
 				t.Errorf("want QuantityMax %v, have %v", tt.want, have)
 			}
 		})
+	}
+}
+
+// TestWritePIDs covers the 2005 INTERNATIONAL_PID round trip (issue #53): a
+// product carrying several typed PIDs survives write→read with every PID and
+// its type preserved in order, and GTIN still resolves to the gtin-typed value.
+func TestWritePIDs(t *testing.T) {
+	pids := []*bmecat.TypedValue{
+		{Type: "supplier_specific", Value: "ACME-001"},
+		{Type: "gtin", Value: "4006381333931"},
+		{Type: "upc", Value: "012345678905"},
+	}
+	p := &bmecat.Product{ID: "1", OrderUnit: "PCE", PIDs: pids}
+	cw := &sliceCatalogWriter{products: []*bmecat.Product{p}}
+
+	var buf bytes.Buffer
+	if err := bmecat.NewWriter(&buf, bmecat.WithVersion(bmecat.Version2005)).Do(context.Background(), cw); err != nil {
+		t.Fatal(err)
+	}
+
+	c := read(t, buf.String())
+	if len(c.products) != 1 {
+		t.Fatalf("want one product, have %d", len(c.products))
+	}
+	if !reflect.DeepEqual(pids, c.products[0].PIDs) {
+		t.Errorf("PIDs round trip mismatch:\nwant %+v\nhave %+v", pids, c.products[0].PIDs)
+	}
+	if want, have := "4006381333931", c.products[0].GTIN; want != have {
+		t.Errorf("GTIN = %q, want %q", have, want)
+	}
+}
+
+// TestWritePIDsFallback confirms that a product with no PIDs but a GTIN still
+// writes a single gtin-typed INTERNATIONAL_PID, which reads back as both the
+// GTIN and a one-element PIDs slice.
+func TestWritePIDsFallback(t *testing.T) {
+	p := &bmecat.Product{ID: "1", OrderUnit: "PCE", GTIN: "4006381333931"}
+	cw := &sliceCatalogWriter{products: []*bmecat.Product{p}}
+
+	var buf bytes.Buffer
+	if err := bmecat.NewWriter(&buf, bmecat.WithVersion(bmecat.Version2005)).Do(context.Background(), cw); err != nil {
+		t.Fatal(err)
+	}
+
+	c := read(t, buf.String())
+	if len(c.products) != 1 {
+		t.Fatalf("want one product, have %d", len(c.products))
+	}
+	want := []*bmecat.TypedValue{{Type: "gtin", Value: "4006381333931"}}
+	if !reflect.DeepEqual(want, c.products[0].PIDs) {
+		t.Errorf("PIDs = %+v, want %+v", c.products[0].PIDs, want)
+	}
+	if have := c.products[0].GTIN; have != "4006381333931" {
+		t.Errorf("GTIN = %q, want %q", have, "4006381333931")
 	}
 }
 
@@ -330,6 +389,11 @@ func TestWriteFuncRoundTrip(t *testing.T) {
 			if len(c.products) != 1 {
 				t.Fatalf("want one product, have %d", len(c.products))
 			}
+			// PIDs is version-specific: 2005 reads GTIN back as a gtin-typed
+			// INTERNATIONAL_PID, 1.2 has no typed PID. Normalise before comparing
+			// the shared product; multi-PID round trips are covered by
+			// TestWritePIDs.
+			c.products[0].PIDs = nil
 			if !reflect.DeepEqual(product, c.products[0]) {
 				t.Errorf("product round trip mismatch:\nwant %+v\nhave %+v", product, c.products[0])
 			}

@@ -21,7 +21,9 @@ and ingests 1.2 and 2005 catalogs through the same code path:
 
 The neutral model exposes the fields the two versions have in common. In
 particular [Product.GTIN] unifies the 1.2 EAN element and the 2005
-INTERNATIONAL_PID element behind a single accessor.
+INTERNATIONAL_PID element behind a single accessor. For 2005 documents that
+carry more than one INTERNATIONAL_PID, [Product.PIDs] preserves every typed
+identifier so a read-modify-write keeps them all.
 
 BMEcat 2005 lets many text elements repeat once per language (the spec's
 dtMLSTRING type). Those neutral fields are [LocalizedStrings], keeping every

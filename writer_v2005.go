@@ -216,9 +216,18 @@ func neutralProductToV2005(p *Product) *bmecat2005.Product {
 			Segments:              localizedToV2005(p.Segments),
 		},
 	}
-	// GTIN maps to INTERNATIONAL_PID (the 2005 replacement for EAN); the reader
-	// reads it back from the first INTERNATIONAL_PID.
-	if p.GTIN != "" {
+	// INTERNATIONAL_PID (the 2005 replacement for EAN). PIDs takes precedence
+	// when set so a read-modify-write preserves every typed identifier;
+	// otherwise emit a single gtin-typed PID from the GTIN convenience field.
+	if len(p.PIDs) > 0 {
+		pids := make([]*bmecat2005.InternationalPID, 0, len(p.PIDs))
+		for _, pid := range p.PIDs {
+			if pid != nil {
+				pids = append(pids, &bmecat2005.InternationalPID{Type: pid.Type, Value: pid.Value})
+			}
+		}
+		prod.Details.InternationalPIDs = pids
+	} else if p.GTIN != "" {
 		prod.Details.InternationalPIDs = []*bmecat2005.InternationalPID{{Type: "gtin", Value: p.GTIN}}
 	}
 	prod.Details.BuyerPIDs = make([]*bmecat2005.BuyerPID, 0, len(p.BuyerIDs))
