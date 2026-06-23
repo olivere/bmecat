@@ -1,6 +1,7 @@
 package bmecat
 
 import (
+	"strings"
 	"time"
 
 	"github.com/olivere/bmecat/bmecat2005"
@@ -274,13 +275,27 @@ func taxFromV2005Price(pr *bmecat2005.ProductPrice) *float64 {
 	return nil
 }
 
-// gtinFromV2005 returns the canonical GTIN/EAN for a 2005 product: the first
-// INTERNATIONAL_PID value, falling back to the legacy EAN element.
+// gtinFromV2005 returns the canonical GTIN/EAN for a 2005 product. It prefers
+// an INTERNATIONAL_PID explicitly typed gtin or ean, then falls back to the
+// first non-empty PID of any type (an untyped PID is almost always the GTIN),
+// and finally to the legacy EAN element. This stops a leading non-GTIN PID
+// (e.g. type="supplier_specific") from shadowing a correctly-typed one.
 func gtinFromV2005(d *bmecat2005.ProductDetails) string {
+	var first string
 	for _, pid := range d.InternationalPIDs {
-		if pid != nil && pid.Value != "" {
+		if pid == nil || pid.Value == "" {
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(pid.Type)) {
+		case "gtin", "ean":
 			return pid.Value
 		}
+		if first == "" {
+			first = pid.Value
+		}
+	}
+	if first != "" {
+		return first
 	}
 	return d.EAN
 }
