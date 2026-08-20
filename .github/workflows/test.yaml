@@ -9,13 +9,10 @@ permissions:
 
 jobs:
   test:
-    name: Test (Go ${{ matrix.go-version }})
-    strategy:
-      fail-fast: false
-      matrix:
-        # "stable" is the latest Go release, "oldstable" the one before it.
-        # This tracks Go's own support policy without editing the matrix.
-        go-version: [oldstable, stable]
+    name: Test
+    # The go directive in go.mod tracks the latest Go release, and setup-go
+    # pins GOTOOLCHAIN=local, so an oldstable job cannot build the module.
+    # Widen this back into a matrix if go.mod ever drops below stable.
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,7 +20,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: stable
       - name: Build
         run: go build ./...
       - name: Test
