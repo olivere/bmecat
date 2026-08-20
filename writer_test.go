@@ -12,9 +12,6 @@ import (
 	"github.com/olivere/bmecat"
 )
 
-func wInt(v int) *int           { return &v }
-func wFloat(v float64) *float64 { return &v }
-
 // sliceCatalogWriter is a test CatalogWriter that streams a fixed header and
 // product slice. Production code streams from its own source; this just adapts a
 // slice for the tests.
@@ -58,7 +55,7 @@ func fullProduct() *bmecat.Product {
 		Type:       "net_customer",
 		Amount:     9.99,
 		Currency:   "EUR",
-		Tax:        wFloat(0.19),
+		Tax:        new(0.19),
 		Factor:     1,
 		LowerBound: 1,
 		Territory:  []string{"DE"},
@@ -74,7 +71,7 @@ func fullProduct() *bmecat.Product {
 		ManufacturerTypeDescr:   bmecat.Localized("Type-X"),
 		ERPGroupBuyer:           "EB",
 		ERPGroupSupplier:        "ES",
-		DeliveryTime:            wInt(5),
+		DeliveryTime:            new(5),
 		Keywords:                bmecat.Localized("tool", "widget"),
 		Remarks:                 bmecat.Localized("handle with care"),
 		Segments:                bmecat.Localized("SEG1"),

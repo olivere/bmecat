@@ -17,12 +17,6 @@ import (
 //	go test ./bmecat2005/ -run TestWrite -update
 var update = flag.Bool("update", false, "update golden files")
 
-// intp returns a pointer to the given int, for use in optional fields.
-func intp(v int) *int { return &v }
-
-// float64p returns a pointer to the given float64, for use in optional fields.
-func float64p(v float64) *float64 { return &v }
-
 var testHeader = &bmecat2005.Header{
 	GeneratorInfo: "BMEcat Generator",
 	Catalog: &bmecat2005.Catalog{
@@ -167,7 +161,7 @@ func sampleProduct() *bmecat2005.Product {
 			},
 			ManufacturerPID:  "MPN",
 			ManufacturerName: "Microsoft",
-			DeliveryTime:     intp(2),
+			DeliveryTime:     new(2),
 			SpecialTreatmentClasses: []*bmecat2005.ProductSpecialTreatmentClass{
 				{Type: "GGVS", Value: "1201"},
 			},
@@ -212,7 +206,7 @@ func sampleProduct() *bmecat2005.Product {
 						Type:       bmecat2005.ProductPriceTypeNetCustomer,
 						Amount:     1499.50,
 						Currency:   "EUR",
-						Tax:        float64p(0.19),
+						Tax:        new(0.19),
 						Factor:     1.0,
 						LowerBound: 1,
 						Territory:  []string{"DE", "AT"},
@@ -221,7 +215,7 @@ func sampleProduct() *bmecat2005.Product {
 						Type:       bmecat2005.ProductPriceTypeNetCustomer,
 						Amount:     1300.90,
 						Currency:   "EUR",
-						Tax:        float64p(0.19),
+						Tax:        new(0.19),
 						Factor:     1.0,
 						LowerBound: 100,
 						Territory:  []string{"DE", "AT"},
