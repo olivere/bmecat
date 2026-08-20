@@ -18,7 +18,7 @@ require (
 	golang.org/x/telemetry v0.0.0-20260819180204-f79da969f323 // indirect
 	golang.org/x/tools v0.49.0 // indirect
 	golang.org/x/vuln v1.7.0 // indirect
-	honnef.co/go/tools v0.7.0 // indirect
+	honnef.co/go/tools v0.8.0-rc.1 // indirect
 	mvdan.cc/gofumpt v0.11.0 // indirect
 )
 
