@@ -12,12 +12,6 @@ import (
 	"github.com/olivere/bmecat/bmecat12"
 )
 
-// intp returns a pointer to the given int, for use in optional fields.
-func intp(v int) *int { return &v }
-
-// float64p returns a pointer to the given float64, for use in optional fields.
-func float64p(v float64) *float64 { return &v }
-
 var testHeader = &bmecat12.Header{
 	GeneratorInfo: "BMEcat Generator",
 	Catalog: &bmecat12.Catalog{
@@ -177,7 +171,7 @@ func TestWriteNewCatalog(t *testing.T) {
 				},
 				ManufacturerAID:  "MPN",
 				ManufacturerName: "Microsoft",
-				DeliveryTime:     intp(2),
+				DeliveryTime:     new(2),
 				SpecialTreatmentClasses: []*bmecat12.ArticleSpecialTreatmentClass{
 					{
 						Type:  "GGVS",
@@ -225,7 +219,7 @@ func TestWriteNewCatalog(t *testing.T) {
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1499.50,
 							Currency:   "EUR",
-							Tax:        float64p(0.19),
+							Tax:        new(0.19),
 							Factor:     1.0,
 							LowerBound: 1,
 							Territory:  []string{"DE", "AT"},
@@ -234,7 +228,7 @@ func TestWriteNewCatalog(t *testing.T) {
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1300.90,
 							Currency:   "EUR",
-							Tax:        float64p(0.19),
+							Tax:        new(0.19),
 							Factor:     1.0,
 							LowerBound: 100,
 							Territory:  []string{"DE", "AT"},
@@ -342,7 +336,7 @@ func TestWriteUpdateProducts(t *testing.T) {
 				},
 				ManufacturerAID:  "MPN",
 				ManufacturerName: "Microsoft",
-				DeliveryTime:     intp(2),
+				DeliveryTime:     new(2),
 				SpecialTreatmentClasses: []*bmecat12.ArticleSpecialTreatmentClass{
 					{
 						Type:  "GGVS",
@@ -390,7 +384,7 @@ func TestWriteUpdateProducts(t *testing.T) {
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1499.50,
 							Currency:   "EUR",
-							Tax:        float64p(0.19),
+							Tax:        new(0.19),
 							Factor:     1.0,
 							LowerBound: 1,
 							Territory:  []string{"DE", "AT"},
@@ -399,7 +393,7 @@ func TestWriteUpdateProducts(t *testing.T) {
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1300.90,
 							Currency:   "EUR",
-							Tax:        float64p(0.19),
+							Tax:        new(0.19),
 							Factor:     1.0,
 							LowerBound: 100,
 							Territory:  []string{"DE", "AT"},
@@ -477,7 +471,7 @@ func TestWriteUpdatePrices(t *testing.T) {
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1499.50,
 							Currency:   "EUR",
-							Tax:        float64p(0.19),
+							Tax:        new(0.19),
 							Factor:     1.0,
 							LowerBound: 1,
 							Territory:  []string{"DE", "AT"},
@@ -486,7 +480,7 @@ func TestWriteUpdatePrices(t *testing.T) {
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1300.90,
 							Currency:   "EUR",
-							Tax:        float64p(0.19),
+							Tax:        new(0.19),
 							Factor:     1.0,
 							LowerBound: 100,
 							Territory:  []string{"DE", "AT"},
@@ -545,7 +539,7 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 				},
 				ManufacturerAID:  "MPN",
 				ManufacturerName: "Microsoft",
-				DeliveryTime:     intp(2),
+				DeliveryTime:     new(2),
 				SpecialTreatmentClasses: []*bmecat12.ArticleSpecialTreatmentClass{
 					{
 						Type:  "GGVS",
@@ -589,7 +583,7 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1499.50,
 							Currency:   "EUR",
-							Tax:        float64p(0.19),
+							Tax:        new(0.19),
 							Factor:     1.0,
 							LowerBound: 1,
 							Territory:  []string{"DE", "AT"},
@@ -598,7 +592,7 @@ func TestWriteNewCatalogWithBlankClassificationSystem(t *testing.T) {
 							Type:       bmecat12.ArticlePriceTypeNetCustomer,
 							Amount:     1300.90,
 							Currency:   "EUR",
-							Tax:        float64p(0.19),
+							Tax:        new(0.19),
 							Factor:     1.0,
 							LowerBound: 100,
 							Territory:  []string{"DE", "AT"},
