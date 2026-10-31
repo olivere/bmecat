@@ -3,6 +3,7 @@ package bmecat
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -12,6 +13,17 @@ import (
 	"github.com/olivere/bmecat/internal"
 )
 
+var (
+	// ErrNoBMECAT reports that the input is not a BMEcat document the Reader
+	// can identify: it has no BMECAT element, or the element carries neither a
+	// version attribute nor a known BMEcat namespace.
+	ErrNoBMECAT = errors.New("bmecat: not a BMEcat document")
+
+	// ErrUnsupportedVersion reports that the BMECAT element declares a version
+	// other than 1.2 or 2005. The wrapping error names the declared version.
+	ErrUnsupportedVersion = errors.New("bmecat: unsupported BMECAT version")
+)
+
 // CharsetReaderFunc typedef's the CharsetReader from the Decoder in encoding/xml.
 type CharsetReaderFunc func(charset string, input io.Reader) (io.Reader, error)
 
@@ -19,6 +31,11 @@ type CharsetReaderFunc func(charset string, input io.Reader) (io.Reader, error)
 // version from the root <BMECAT version="…"> element and dispatches to the
 // bmecat12 or bmecat2005 reader, normalizing both into the version-neutral
 // types in this package.
+//
+// Do and DetectVersion return errors matching ErrNoBMECAT or
+// ErrUnsupportedVersion when the input cannot be identified as a supported
+// BMEcat document, so callers can tell those cases from I/O errors with
+// errors.Is.
 //
 // Reader is the recommended entry point. Callers that need raw, version-
 // specific fidelity can still use the bmecat12 and bmecat2005 packages
@@ -67,6 +84,10 @@ func WithReaderProgress(f ReaderProgress) ReaderOption {
 
 // DetectVersion reports the BMEcat version of the document without consuming
 // it for the caller: it seeks back to the start before returning.
+//
+// The error matches ErrNoBMECAT when the input has no identifiable BMECAT
+// element, and ErrUnsupportedVersion when it declares a version other than 1.2
+// or 2005; test with errors.Is.
 func (r *Reader) DetectVersion() (Version, error) {
 	if _, err := r.r.Seek(0, io.SeekStart); err != nil {
 		return 0, err
@@ -78,7 +99,7 @@ func (r *Reader) DetectVersion() (Version, error) {
 	for {
 		t, err := dec.Token()
 		if err == io.EOF {
-			return 0, fmt.Errorf("bmecat: no BMECAT element found")
+			return 0, fmt.Errorf("%w: no BMECAT element found", ErrNoBMECAT)
 		}
 		if err != nil {
 			return 0, err
@@ -97,7 +118,7 @@ func (r *Reader) DetectVersion() (Version, error) {
 		if v, ok := versionFromNamespace(se.Name.Space); ok {
 			return v, nil
 		}
-		return 0, fmt.Errorf("bmecat: BMECAT element has no recognizable version")
+		return 0, fmt.Errorf("%w: BMECAT element has no recognizable version", ErrNoBMECAT)
 	}
 }
 
@@ -109,6 +130,8 @@ func (r *Reader) DetectVersion() (Version, error) {
 // transaction — for example to reject incremental updates (Transaction.IsUpdate)
 // up front, without the full parse that Do performs. The same value is also
 // surfaced on Header.Transaction during Do.
+//
+// The error matches ErrNoBMECAT when the input has no BMECAT element.
 func (r *Reader) DetectTransaction() (Transaction, error) {
 	if _, err := r.r.Seek(0, io.SeekStart); err != nil {
 		return 0, err
@@ -121,6 +144,9 @@ func (r *Reader) DetectTransaction() (Transaction, error) {
 	for {
 		t, err := dec.Token()
 		if err == io.EOF {
+			if !inBMECAT {
+				return 0, fmt.Errorf("%w: no BMECAT element found", ErrNoBMECAT)
+			}
 			return 0, fmt.Errorf("bmecat: no transaction element found")
 		}
 		if err != nil {
@@ -154,7 +180,7 @@ func versionFromString(value string) (Version, error) {
 	case strings.HasPrefix(value, "2005"):
 		return Version2005, nil
 	default:
-		return 0, fmt.Errorf("bmecat: unsupported BMECAT version %q", value)
+		return 0, fmt.Errorf("%w %q", ErrUnsupportedVersion, value)
 	}
 }
 
