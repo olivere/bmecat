@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"reflect"
 	"testing"
 
@@ -233,8 +234,7 @@ type failingHeaderHandler struct{}
 func (failingHeaderHandler) HandleHeader(*bmecat.Header) error { return errBoom }
 
 // TestReadHeaderHandlerError ensures a non-EOF error from HandleHeader is
-// surfaced for both versions, including the 1.2 path where the underlying
-// reader would otherwise swallow it (#16).
+// returned for both versions.
 func TestReadHeaderHandlerError(t *testing.T) {
 	for _, tt := range []struct {
 		name string
@@ -248,6 +248,40 @@ func TestReadHeaderHandlerError(t *testing.T) {
 			err := r.Do(context.Background(), failingHeaderHandler{})
 			if !errors.Is(err, errBoom) {
 				t.Fatalf("want wrapped errBoom, have %v", err)
+			}
+		})
+	}
+}
+
+// eofHeaderHandler stops reading from HandleHeader and counts any product
+// delivered afterwards.
+type eofHeaderHandler struct{ products int }
+
+func (*eofHeaderHandler) HandleHeader(*bmecat.Header) error { return io.EOF }
+
+func (h *eofHeaderHandler) HandleProduct(*bmecat.Product) error {
+	h.products++
+	return nil
+}
+
+// TestReadHeaderHandlerEOF ensures io.EOF from HandleHeader stops reading
+// without an error and before any product is delivered, for both versions.
+func TestReadHeaderHandlerEOF(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		doc  string
+	}{
+		{"1.2", catalog12},
+		{"2005", catalog2005},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			h := &eofHeaderHandler{}
+			r := bmecat.NewReader(bytes.NewReader([]byte(tt.doc)))
+			if err := r.Do(context.Background(), h); err != nil {
+				t.Fatalf("want nil error, have %v", err)
+			}
+			if h.products != 0 {
+				t.Errorf("want 0 products after io.EOF, have %d", h.products)
 			}
 		})
 	}

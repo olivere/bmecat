@@ -65,7 +65,7 @@ type Reader struct {
 
 // NewReader creates a new Reader. It expects an underlying io.ReadSeeker
 // which essentially gets the XML content. You can also pass additional
-// options like WithProgress.
+// options like WithReaderProgress.
 func NewReader(r io.ReadSeeker, options ...ReaderOption) *Reader {
 	reader := &Reader{
 		r:                  r,

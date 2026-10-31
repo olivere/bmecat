@@ -65,7 +65,7 @@ type Reader struct {
 
 // NewReader creates a new Reader. It expects an underlying io.ReadSeeker
 // which essentially gets the XML content. You can also pass additional
-// options like WithProgress.
+// options like WithReaderProgress.
 func NewReader(r io.ReadSeeker, options ...ReaderOption) *Reader {
 	reader := &Reader{
 		r:                 r,
@@ -105,9 +105,9 @@ func WithReaderProgress(f ReaderProgress) ReaderOption {
 //
 // You must pass a context, which can be canceled to stop reading.
 //
-// You must also pass a channel of articles, which Do loops over.
-// If the articles channel is closed, Do will write the rest of
-// the BMEcat file, and then return.
+// The handler may implement any combination of HeaderHandler,
+// CatalogGroupHandler, ClassificationGroupHandler, ArticleHandler and
+// CompletionHandler; only the implemented callbacks are invoked.
 func (r *Reader) Do(ctx context.Context, handler any) error {
 	_, err := r.r.Seek(0, io.SeekStart)
 	if err != nil {

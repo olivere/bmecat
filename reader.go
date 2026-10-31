@@ -198,14 +198,7 @@ func (r *Reader) do12(ctx context.Context, handler any, transaction Transaction)
 	if r.progress != nil {
 		opts = append(opts, bmecat12.WithReaderProgress(bmecat12.ReaderProgress(r.progress)))
 	}
-	adapter := newV12Adapter(handler, transaction)
-	err := bmecat12.NewReader(r.r, opts...).Do(ctx, adapter)
-	if err == nil && adapter.headerErr != nil {
-		// The bmecat12 reader swallows non-EOF HandleHeader errors (#16);
-		// surface it so the neutral HeaderHandler contract holds.
-		return adapter.headerErr
-	}
-	return err
+	return bmecat12.NewReader(r.r, opts...).Do(ctx, newV12Adapter(handler, transaction))
 }
 
 func (r *Reader) do2005(ctx context.Context, handler any, transaction Transaction) error {

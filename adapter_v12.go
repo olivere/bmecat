@@ -1,7 +1,6 @@
 package bmecat
 
 import (
-	"io"
 	"time"
 
 	"github.com/olivere/bmecat/bmecat12"
@@ -21,12 +20,6 @@ type v12Adapter struct {
 	// transaction is the document-level transaction detected in phase 1; it is
 	// stamped onto the neutral Header, which the version-specific Header lacks.
 	transaction Transaction
-
-	// headerErr retains a non-EOF error returned by the neutral HeaderHandler.
-	// The bmecat12 reader currently swallows such errors (see issue #16), so
-	// the facade surfaces it after Do returns to honor the HeaderHandler
-	// contract.
-	headerErr error
 }
 
 func newV12Adapter(handler any, transaction Transaction) *v12Adapter {
@@ -55,11 +48,7 @@ func (a *v12Adapter) HandleHeader(h *bmecat12.Header) error {
 	}
 	hdr := convertV12Header(h)
 	hdr.Transaction = a.transaction
-	err := a.header.HandleHeader(hdr)
-	if err != nil && err != io.EOF {
-		a.headerErr = err
-	}
-	return err
+	return a.header.HandleHeader(hdr)
 }
 
 func (a *v12Adapter) HandleArticle(art *bmecat12.Article) error {
