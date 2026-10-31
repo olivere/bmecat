@@ -1,11 +1,11 @@
 /*
-Package bmecat supports reading BMEcat files of either supported version
-through a single, version-neutral API.
+Package bmecat reads and writes BMEcat files of either supported version, 1.2
+and 2005, through a single, version-neutral API.
 
 BMEcat is a standard for electronic product catalogs.
-See http://www.bmecat.org/ for details about the format.
+See https://www.bmecat.org/ for details about the format.
 The specifications are available at
-http://www.bme.de/initiativen/bmecat/download/.
+https://www.bme.de/initiativen/bmecat/download/.
 
 # Version-neutral reading
 
@@ -72,6 +72,13 @@ in phase 1, mirroring [Reader.DetectVersion]:
 The same value is also surfaced on [Header.Transaction] during Do, for callers
 that read it as part of a full parse.
 
+The reader decodes any encoding the XML prolog declares by a label of the
+WHATWG Encoding Standard: UTF-8, the ISO-8859 family, Windows code pages, and
+CJK encodings such as GBK, GB18030, Big5, Shift-JIS and EUC-KR. Following that
+standard, it decodes ISO-8859-1 as Windows-1252 and GB2312 as GBK, which is how
+most catalogs with those labels are actually encoded. Other encodings, such as
+IBM437 or UTF-32, fail with an error.
+
 # Version-neutral writing
 
 [Writer] is the streaming, write-path counterpart of [Reader]: a caller
@@ -101,6 +108,13 @@ As with reading, writing is streaming — each product is converted and encoded 
 it arrives, so even a very large catalog is never held in memory at once — and
 the neutral model carries only the fields the two versions share, so the output
 covers those common fields.
+
+The document-level transaction defaults to T_NEW_CATALOG; [WithTransaction]
+selects an update transaction instead. Data that is bounded and known up front
+is given as configuration rather than streamed: [WithClassificationSystem] emits
+a CLASSIFICATION_SYSTEM (such as an eCl@ss tree) before the products of a new
+catalog. The writer does not emit CATALOG_GROUP_SYSTEM or the product-to-group
+maps yet, so [Product.CatalogGroupIDs] is read but not written.
 
 Callers that need raw, version-specific fidelity (including 2005-only fields
 such as PRODUCT_LOGISTIC_DETAILS, or writing version-specific elements) can use

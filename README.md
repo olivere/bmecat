@@ -5,17 +5,27 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A small, dependency-light library for reading and writing
-[BMEcat](https://www.bmecat.org/) electronic product catalogs in Go.
-It supports BMEcat version 1.2 via the `bmecat12` package and BMEcat 2005
-(2.0) via the `bmecat2005` package. The two packages share the same
-streaming, handler-based API, so they are learnable as one.
+[BMEcat](https://www.bmecat.org/) electronic product catalogs in Go, for
+BMEcat 1.2 and BMEcat 2005. Reading and writing both stream, so a catalog of
+millions of products is never held in memory at once.
 
-Reading is streaming and handler-based, so large catalogs can be processed
-without loading the whole document into memory.
+The module has three packages:
+
+- `bmecat` reads both versions into one version-neutral model and writes that
+  model as either version. Start here; your mapping code then handles 1.2 and
+  2005 alike.
+- `bmecat12` and `bmecat2005` expose each version's elements as they appear in
+  the document, including fields the other version lacks (such as 2005's
+  `PRODUCT_LOGISTIC_DETAILS`). Use them when you need that fidelity.
+
+The [package documentation](https://pkg.go.dev/github.com/olivere/bmecat)
+covers the model in detail: GTIN and typed identifiers, multi-language text,
+price blocks and their validity dates, transactions, classification systems
+and character encodings.
 
 ## Requirements
 
-Go 1.25 or later.
+Go 1.27.3 or later.
 
 ## Installation
 
@@ -23,238 +33,77 @@ Go 1.25 or later.
 go get github.com/olivere/bmecat
 ```
 
-## Reading any version (recommended)
+## Reading a catalog
 
-If you ingest catalogs from a mix of suppliers, use the top-level `bmecat`
-package. `bmecat.NewReader` auto-detects the version from the root
-`<BMECAT version="…">` element and normalises both 1.2 and 2005 into a single,
-version-neutral model — so you write your mapping once. Implement only the
-neutral handler interfaces you care about (`HeaderHandler`, `ProductHandler`,
-`CatalogGroupHandler`, `ClassificationGroupHandler` and/or `CompletionHandler`):
+Implement the handler interfaces you care about (`HeaderHandler`,
+`ProductHandler`, `CatalogGroupHandler`, `ClassificationGroupHandler`,
+`CompletionHandler`):
 
 ```go
-package main
+// catalogPrinter implements the neutral handler interfaces it cares about.
+// The same handler works for BMEcat 1.2 and 2005 input.
+type catalogPrinter struct{}
 
-import (
-	"context"
-	"fmt"
-	"log"
-	"os"
-
-	"github.com/olivere/bmecat"
-)
-
-// handler works unchanged for BMEcat 1.2 and 2005 input.
-type handler struct{}
-
-func (handler) HandleHeader(h *bmecat.Header) error {
-	fmt.Printf("Catalog %q (BMEcat %s) with %d product(s)\n",
-		h.Catalog.Name, h.Version, h.NumberOfProducts)
+func (catalogPrinter) HandleHeader(h *bmecat.Header) error {
+	fmt.Printf("Catalog %q (BMEcat %s)\n", h.Catalog.Name.Value(), h.Version)
 	return nil
 }
 
-func (handler) HandleProduct(p *bmecat.Product) error {
-	fmt.Printf("Product %s: %s (GTIN %s)\n", p.ID, p.DescriptionShort.Value(), p.GTIN)
+func (catalogPrinter) HandleProduct(p *bmecat.Product) error {
+	fmt.Printf("- %s: %s (GTIN %s)\n", p.ID, p.DescriptionShort.Value(), p.GTIN)
 	return nil
-}
-
-func main() {
-	f, err := os.Open("catalog.xml")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-
-	if err := bmecat.NewReader(f).Do(context.Background(), handler{}); err != nil {
-		log.Fatal(err)
-	}
 }
 ```
 
-The neutral model exposes the fields 1.2 and 2005 share; in particular
-`Product.GTIN` unifies the 1.2 `EAN` and 2005 `INTERNATIONAL_PID` elements. For
-2005 documents with more than one `INTERNATIONAL_PID`, `Product.PIDs` preserves
-every typed identifier so a read-modify-write keeps them all.
-
-BMEcat 2005 lets many text elements repeat once per language (the spec's
-`dtMLSTRING` type). Those fields are exposed as `LocalizedStrings`, preserving
-every variant in document order, so a consumer can pick the one matching a
-configured language with `p.DescriptionShort.Get("eng")` (which falls back to the
-first variant when the language is absent) or take the first with
-`p.DescriptionShort.Value()`. For elements that legitimately repeat (`KEYWORD`,
-`SEGMENT`, feature values), `p.Keywords.All("eng")` returns every value for a
-language. Build the common single-language value with `bmecat.Localized("Widget")`
-(it is variadic: `bmecat.Localized("a", "b")` builds a list). Every element the
-2005 schema types as `dtMLSTRING` is covered — on the neutral model the catalog
-name; product short/long description, manufacturer type description, keywords,
-remarks and segments; feature group name, feature names and values; MIME source
-and description — and, in the `bmecat2005` package, additionally address parts
-(name, street, city, …), MIME alt, feature descriptions/value-details/variant
-values, catalog-group keywords, classification-group synonyms and classification
-system level names. Identifiers and codes the schema types as plain strings (e.g.
-`MANUFACTURER_NAME`, `SUPPLIER_NAME`, `FUNIT`, the classification system name,
-`EMAIL`/`URL`) stay scalar.
-
-BMEcat 1.2 has no per-element `lang` attribute — it declares one catalog language
-in the header — so the `bmecat12` structs keep plain `string`/`[]string` fields.
-Reading a 1.2 document fills each `LocalizedStrings` with a single language-less
-variant; writing the neutral model to 1.2 emits the variant matching the
-catalog's language (falling back to the first), which is lossy for genuinely
-multi-language data. The `lang` attribute is written (in 2005) only for variants
-that set a language, so single-language catalogs round-trip unchanged.
-
-This replaced the former scalar fields: update reads such as `p.DescriptionShort`
-to `p.DescriptionShort.Value()` (or `.Get(lang)` / `.All(lang)`).
-Prices come both flattened (`Product.Prices`) and grouped by their
-`ARTICLE_PRICE_DETAILS` / `PRODUCT_PRICE_DETAILS` wrapper with validity dates
-(`Product.PriceDetails`). Helpers pick the block valid at a time with
-`p.CurrentPriceDetails(at)` (or `p.ValidPriceDetails(at)` to spot a price
-calendar of overlapping windows) and select a quantity tier within a block with
-`pd.PriceFor(quantity, priceType)`. Runnable examples are in the
-[package documentation](https://pkg.go.dev/github.com/olivere/bmecat#pkg-examples).
-
-To gate on the document-level transaction — for example to accept only full
-catalogs and reject incremental updates — call `DetectTransaction` before `Do`
-(it rewinds, like `DetectVersion`); the same value is also available as
-`Header.Transaction` during a full parse:
+Then pass it to `Reader.Do`. The reader detects the version from the document:
 
 ```go
-r := bmecat.NewReader(f)
-if tx, err := r.DetectTransaction(); err != nil {
-	return err
-} else if tx.IsUpdate() {
-	return fmt.Errorf("only full catalogs are supported, got %s", tx)
+r := bmecat.NewReader(strings.NewReader(doc))
+if err := r.Do(context.Background(), catalogPrinter{}); err != nil {
+	panic(err)
 }
 ```
-
-## Reading a specific version
-
-To work with a single version directly — for raw fidelity, version-specific
-fields (e.g. 2005's `PRODUCT_LOGISTIC_DETAILS`), or writing — use the
-`bmecat12` or `bmecat2005` package. Both share the same shape: implement only
-the handler interfaces you care about — `HeaderHandler`, `ArticleHandler`
-(1.2) / `ProductHandler` (2005), `CatalogGroupHandler`,
-`ClassificationGroupHandler` and/or `CompletionHandler` — and pass your handler
-to `Reader.Do`:
-
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"log"
-	"os"
-
-	"github.com/olivere/bmecat/bmecat12"
-)
-
-// handler reacts to the parts of the catalog it implements a method for.
-type handler struct{}
-
-func (handler) HandleHeader(h *bmecat12.Header) error {
-	fmt.Printf("Catalog %q with %d article(s)\n", h.Catalog.Name, h.NumberOfArticles)
-	return nil
-}
-
-func (handler) HandleArticle(a *bmecat12.Article) error {
-	fmt.Printf("Article %s: %s\n", a.SupplierAID, a.Details.DescriptionShort.Value())
-	return nil
-}
-
-func main() {
-	f, err := os.Open("catalog.xml")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-
-	r := bmecat12.NewReader(f)
-	if err := r.Do(context.Background(), handler{}); err != nil {
-		log.Fatal(err)
-	}
-}
-```
-
-### Character encodings
-
-The reader decodes any encoding declared in the XML prolog that is registered
-with the IANA character set registry and implemented by `golang.org/x/text` —
-UTF-8, the ISO-8859 family, Windows code pages, and CJK encodings such as GBK,
-GB18030, Big5, Shift-JIS and EUC-KR. ISO-8859-1 is decoded leniently as
-Windows-1252, which matches how most real-world catalogs are authored.
 
 ## Writing a catalog
 
-### Version-neutral writing
-
-`bmecat.NewWriter` is the streaming, write-path counterpart of
-`bmecat.NewReader`: implement a neutral `CatalogWriter` (a header plus a channel
-of products), pick a target version with `WithVersion`, and the writer emits a
-valid BMEcat 1.2 or 2005 document, converting the neutral model to the
-version-specific one for you. Like reading, writing is streaming — each product
-is converted and encoded as it arrives, so even a catalog of millions of
-products is never held in memory at once.
+`Writer.WriteFunc` takes a header and a function that streams products by
+calling `yield`. `WithVersion` picks the output version:
 
 ```go
-// catalog implements bmecat.CatalogWriter.
-type catalog struct{ /* e.g. a database handle */ }
-
-func (catalog) Header() *bmecat.Header { return header }
-
-func (c catalog) Products(ctx context.Context) (<-chan *bmecat.Product, <-chan error) {
-	out := make(chan *bmecat.Product)
-	errc := make(chan error, 1)
-	go func() {
-		defer close(out)
-		for _, p := range c.stream() { // e.g. rows from a database cursor
-			select {
-			case out <- p:
-			case <-ctx.Done():
-				errc <- ctx.Err()
-				return
-			}
+var buf strings.Builder
+w := bmecat.NewWriter(&buf, bmecat.WithVersion(bmecat.Version2005))
+err := w.WriteFunc(context.Background(), header, func(yield func(*bmecat.Product) error) error {
+	for _, p := range products {
+		if err := yield(p); err != nil {
+			return err
 		}
-	}()
-	return out, errc
-}
-
-// ...
-w := bmecat.NewWriter(out, bmecat.WithVersion(bmecat.Version2005))
-if err := w.Do(context.Background(), catalog{}); err != nil {
-	return err
+	}
+	return nil
+})
+if err != nil {
+	panic(err)
 }
 ```
 
-The neutral model carries the fields 1.2 and 2005 have in common, so the output
-covers those; version-specific fidelity needs the version packages below. The
-neutral writer also does not emit catalog-group mappings (neither version writer
-does).
+The neutral model carries the fields the two versions share. The writer does
+not emit catalog groups yet ([#42](https://github.com/olivere/bmecat/issues/42)).
 
-To emit a `CLASSIFICATION_SYSTEM` (e.g. an eCl@ss or supplier classification
-tree) ahead of the product stream, pass it as configuration with
-`WithClassificationSystem`. Because it is bounded and known up front, it is given
-once rather than streamed; it is written only for a `T_NEW_CATALOG` transaction
-and omitted when blank:
+## Version-specific packages
+
+`bmecat12` and `bmecat2005` read the same way as the neutral package, through
+handler interfaces passed to `Reader.Do`, but with their own types. A 1.2
+handler, for example, receives each `ARTICLE`:
 
 ```go
-w := bmecat.NewWriter(out,
-	bmecat.WithVersion(bmecat.Version2005),
-	bmecat.WithClassificationSystem(&bmecat.ClassificationSystem{
-		Name:   "ECLASS-5.1",
-		Groups: groups, // []*bmecat.ClassificationGroup
-	}),
-)
+func (articlePrinter) HandleArticle(a *bmecat12.Article) error {
+	fmt.Printf("- %s: %s (EAN %s)\n", a.SupplierAID, a.Details.DescriptionShort, a.Details.EAN)
+	return nil
+}
 ```
 
-### Version-specific writing
-
-For full, version-specific fidelity, implement the `CatalogWriter` interface of
-the target package (`bmecat12` or `bmecat2005`) and hand it to that package's
-`Writer.Do`. See the package documentation
+Both packages have runnable examples in their documentation
 ([bmecat12](https://pkg.go.dev/github.com/olivere/bmecat/bmecat12),
-[bmecat2005](https://pkg.go.dev/github.com/olivere/bmecat/bmecat2005)) and the
-writer tests for complete, runnable examples.
+[bmecat2005](https://pkg.go.dev/github.com/olivere/bmecat/bmecat2005)).
 
 ## Command-line tool
 
@@ -290,8 +139,7 @@ read and write the common `T_NEW_CATALOG`, `T_UPDATE_PRODUCTS` and
 1.2 (`ARTICLE` becomes `PRODUCT`, `EAN` becomes `INTERNATIONAL_PID`,
 `MANUFACTURER_AID` becomes `MANUFACTURER_PID`, and so on); the `bmecat2005`
 package also models a few common 2005-only additions such as
-`INTERNATIONAL_PID` type qualifiers and `PRODUCT_LOGISTIC_DETAILS`. Writing
-currently targets `T_NEW_CATALOG`.
+`INTERNATIONAL_PID` type qualifiers and `PRODUCT_LOGISTIC_DETAILS`.
 
 ## Development
 
@@ -304,7 +152,7 @@ managed as Go tool dependencies, so no separate installation is needed.
 make build       # build the CLI
 make test        # run tests with the race detector
 make fmt         # format the code with gofumpt
-make lint        # check formatting and run go vet
+make lint        # check formatting, run go vet and staticcheck
 make vulncheck   # scan for known vulnerabilities
 make modernize   # apply modern Go idioms
 make bench       # run the benchmarks
