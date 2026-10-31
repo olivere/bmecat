@@ -198,8 +198,12 @@ func versionFromNamespace(ns string) (Version, bool) {
 // Do reads the BMEcat file, detecting its version and dispatching to the
 // matching version reader. The handler may implement any combination of
 // HeaderHandler, CatalogGroupHandler, ClassificationGroupHandler,
-// ProductHandler and CompletionHandler.
+// ProductHandler and CompletionHandler. Do returns an error without reading
+// when the handler implements none of them.
 func (r *Reader) Do(ctx context.Context, handler any) error {
+	if !isHandler(handler) {
+		return fmt.Errorf("bmecat: handler %T implements none of HeaderHandler, ProductHandler, CatalogGroupHandler, ClassificationGroupHandler or CompletionHandler", handler)
+	}
 	version, err := r.DetectVersion()
 	if err != nil {
 		return err
@@ -235,4 +239,15 @@ func (r *Reader) do2005(ctx context.Context, handler any, transaction Transactio
 		opts = append(opts, bmecat2005.WithReaderProgress(bmecat2005.ReaderProgress(r.progress)))
 	}
 	return bmecat2005.NewReader(r.r, opts...).Do(ctx, newV2005Adapter(handler, transaction))
+}
+
+// isHandler reports whether handler implements at least one of the neutral
+// handler interfaces that the adapters dispatch to.
+func isHandler(handler any) bool {
+	switch handler.(type) {
+	case HeaderHandler, ProductHandler, CatalogGroupHandler, ClassificationGroupHandler, CompletionHandler:
+		return true
+	default:
+		return false
+	}
 }

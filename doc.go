@@ -19,6 +19,11 @@ and ingests 1.2 and 2005 catalogs through the same code path:
 	r := bmecat.NewReader(file)
 	err := r.Do(ctx, handler)
 
+Do returns an error without reading when the handler implements none of those
+interfaces. A misspelled method name still compiles as long as the handler
+implements at least one other interface; an assertion such as
+var _ bmecat.ProductHandler = myHandler{} turns it into a compile error.
+
 The neutral model exposes the fields the two versions have in common. In
 particular [Product.GTIN] unifies the 1.2 EAN element and the 2005
 INTERNATIONAL_PID element behind a single accessor. For 2005 documents that
