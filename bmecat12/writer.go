@@ -27,6 +27,20 @@ func (t Transaction) String() string {
 	}
 }
 
+// dtd returns the SYSTEM identifier of the DTD for the given transaction, as
+// shipped in the official BMEcat 1.2 DTD package (Rev. A). Each of these DTDs
+// fixes the namespace that xmlNamespace returns for the same transaction.
+func (t Transaction) dtd() string {
+	switch t {
+	case UpdateProducts:
+		return "bmecat_update_products_1_2.dtd"
+	case UpdatePrices:
+		return "bmecat_update_prices_1_2.dtd"
+	default:
+		return "bmecat_new_catalog_1_2.dtd"
+	}
+}
+
 // CatalogWriter specifies the contract that users of Writer have to
 // implement to allow writing a BMEcat file.
 //
@@ -178,7 +192,7 @@ func (w *Writer) writeLeadIn(writer CatalogWriter) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(w.w, `<!DOCTYPE BMECAT SYSTEM "bmecat_new_catalog.dtd">`)
+	_, err = fmt.Fprintf(w.w, "<!DOCTYPE BMECAT SYSTEM %q>\n", writer.Transaction().dtd())
 	if err != nil {
 		return err
 	}
