@@ -1,8 +1,6 @@
 # Tools (gofumpt, govulncheck, staticcheck) are managed as Go tool dependencies
 # in go.mod and invoked via `go tool`. See the `tool` directive in go.mod.
-# modernize lives inside gopls (an internal package), so it is run ad-hoc via
-# `go run` to avoid pulling all of gopls into the module graph.
-MODERNIZE = golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest
+# The modernizers ship with `go fix`, so they need no tool dependency.
 
 # Benchmark knobs (override on the command line, e.g. `make bench BENCH=Write`).
 # BENCHCOUNT samples each benchmark so benchstat has something to compare.
@@ -51,7 +49,7 @@ vulncheck:
 
 .PHONY: modernize
 modernize:
-	go run $(MODERNIZE) -fix ./...
+	go fix ./...
 
 # Run the full set of checks, as CI does.
 .PHONY: check
