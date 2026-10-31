@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/olivere/bmecat"
@@ -157,22 +158,62 @@ func TestDetectVersion(t *testing.T) {
 	}
 }
 
-func TestDetectVersionErrors(t *testing.T) {
-	tests := []struct {
-		name string
-		doc  string
-	}{
-		{"no BMECAT element", `<?xml version="1.0"?><ROOT></ROOT>`},
-		{"unsupported version", `<BMECAT version="3.0"></BMECAT>`},
-		{"no version, unknown namespace", `<BMECAT xmlns="http://example.com/x"></BMECAT>`},
+// identificationErrorTests are documents that DetectVersion and Do reject, with
+// the sentinel error each must match. A nil want means the error must match
+// neither sentinel.
+var identificationErrorTests = []struct {
+	name string
+	doc  string
+	want error
+}{
+	{"no BMECAT element", `<?xml version="1.0"?><ROOT></ROOT>`, bmecat.ErrNoBMECAT},
+	{"empty input", ``, bmecat.ErrNoBMECAT},
+	{"no version, unknown namespace", `<BMECAT xmlns="http://example.com/x"></BMECAT>`, bmecat.ErrNoBMECAT},
+	{"unsupported version", `<BMECAT version="3.0"></BMECAT>`, bmecat.ErrUnsupportedVersion},
+	{"malformed XML", `<BMECAT version="1.2"`, nil},
+}
+
+// checkSentinel fails t unless err is non-nil and matches want, or matches
+// neither sentinel when want is nil.
+func checkSentinel(t *testing.T, err, want error) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected an error, got nil")
 	}
-	for _, tt := range tests {
+	for _, sentinel := range []error{bmecat.ErrNoBMECAT, bmecat.ErrUnsupportedVersion} {
+		if is := errors.Is(err, sentinel); is != (sentinel == want) {
+			t.Errorf("errors.Is(%q, %v) = %v, want %v", err, sentinel, is, !is)
+		}
+	}
+}
+
+func TestDetectVersionErrors(t *testing.T) {
+	for _, tt := range identificationErrorTests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := bmecat.NewReader(bytes.NewReader([]byte(tt.doc)))
-			if _, err := r.DetectVersion(); err == nil {
-				t.Fatal("expected an error, got nil")
-			}
+			_, err := r.DetectVersion()
+			checkSentinel(t, err, tt.want)
 		})
+	}
+}
+
+func TestDoIdentificationErrors(t *testing.T) {
+	for _, tt := range identificationErrorTests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := bmecat.NewReader(bytes.NewReader([]byte(tt.doc)))
+			err := r.Do(context.Background(), &collector{})
+			checkSentinel(t, err, tt.want)
+		})
+	}
+}
+
+// TestUnsupportedVersionMessage confirms the wrapped error keeps the version
+// value, so the message stays useful next to the sentinel.
+func TestUnsupportedVersionMessage(t *testing.T) {
+	r := bmecat.NewReader(bytes.NewReader([]byte(`<BMECAT version="3.0"></BMECAT>`)))
+	_, err := r.DetectVersion()
+	if err == nil || !strings.Contains(err.Error(), `"3.0"`) {
+		t.Errorf("want an error naming version \"3.0\", have %v", err)
 	}
 }
 
@@ -387,16 +428,17 @@ func TestDetectTransactionErrors(t *testing.T) {
 	tests := []struct {
 		name string
 		doc  string
+		want error
 	}{
-		{"no BMECAT element", `<?xml version="1.0"?><ROOT></ROOT>`},
-		{"header only, no transaction", `<BMECAT version="1.2"><HEADER></HEADER></BMECAT>`},
+		{"no BMECAT element", `<?xml version="1.0"?><ROOT></ROOT>`, bmecat.ErrNoBMECAT},
+		{"empty input", ``, bmecat.ErrNoBMECAT},
+		{"header only, no transaction", `<BMECAT version="1.2"><HEADER></HEADER></BMECAT>`, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := bmecat.NewReader(bytes.NewReader([]byte(tt.doc)))
-			if _, err := r.DetectTransaction(); err == nil {
-				t.Fatal("expected an error, got nil")
-			}
+			_, err := r.DetectTransaction()
+			checkSentinel(t, err, tt.want)
 		})
 	}
 }
