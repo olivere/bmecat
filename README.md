@@ -44,6 +44,12 @@ Implement the handler interfaces you care about (`HeaderHandler`,
 // The same handler works for BMEcat 1.2 and 2005 input.
 type catalogPrinter struct{}
 
+// These assertions turn a misspelled handler method into a compile error.
+var (
+	_ bmecat.HeaderHandler  = catalogPrinter{}
+	_ bmecat.ProductHandler = catalogPrinter{}
+)
+
 func (catalogPrinter) HandleHeader(h *bmecat.Header) error {
 	fmt.Printf("Catalog %q (BMEcat %s)\n", h.Catalog.Name.Value(), h.Version)
 	return nil

@@ -508,3 +508,69 @@ func TestTransactionString(t *testing.T) {
 		}
 	}
 }
+
+// articleHandler is a handler ported from bmecat12 that still has the 1.2
+// method name, so it implements none of the neutral handler interfaces.
+type articleHandler struct{}
+
+func (articleHandler) HandleArticle(*bmecat.Product) error { return nil }
+
+// unreadable fails every read and seek, so a test using it can tell whether
+// the Reader touched the input.
+type unreadable struct{}
+
+var errUnreadable = errors.New("input was read")
+
+func (unreadable) Read([]byte) (int, error)       { return 0, errUnreadable }
+func (unreadable) Seek(int64, int) (int64, error) { return 0, errUnreadable }
+
+// TestDoRejectsHandlerWithoutInterfaces confirms Do fails before reading when
+// the handler implements none of the neutral handler interfaces, instead of
+// returning nil after zero callbacks.
+func TestDoRejectsHandlerWithoutInterfaces(t *testing.T) {
+	tests := []struct {
+		name    string
+		handler any
+	}{
+		{"bmecat12-style HandleArticle", articleHandler{}},
+		{"empty struct", struct{}{}},
+		{"nil", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := bmecat.NewReader(unreadable{}).Do(context.Background(), tt.handler)
+			if err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+			if errors.Is(err, errUnreadable) {
+				t.Fatalf("Do read the input before rejecting the handler: %v", err)
+			}
+			for _, name := range []string{"HeaderHandler", "ProductHandler", "CatalogGroupHandler", "ClassificationGroupHandler", "CompletionHandler"} {
+				if !strings.Contains(err.Error(), name) {
+					t.Errorf("error %q does not name %s", err, name)
+				}
+			}
+		})
+	}
+}
+
+type completionOnly struct{ done *bool }
+
+func (c completionOnly) HandleComplete() { *c.done = true }
+
+// TestDoAcceptsSingleInterfaceHandler confirms a handler implementing just one
+// of the interfaces is accepted.
+func TestDoAcceptsSingleInterfaceHandler(t *testing.T) {
+	for name, doc := range map[string]string{"1.2": catalog12, "2005": catalog2005} {
+		t.Run(name, func(t *testing.T) {
+			var done bool
+			r := bmecat.NewReader(bytes.NewReader([]byte(doc)))
+			if err := r.Do(context.Background(), completionOnly{&done}); err != nil {
+				t.Fatal(err)
+			}
+			if !done {
+				t.Error("HandleComplete was not called")
+			}
+		})
+	}
+}
