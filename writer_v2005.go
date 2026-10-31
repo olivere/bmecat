@@ -217,29 +217,36 @@ func neutralProductToV2005(p *Product) *bmecat2005.Product {
 		},
 	}
 	// INTERNATIONAL_PID (the 2005 replacement for EAN). PIDs takes precedence
-	// when set so a read-modify-write preserves every typed identifier;
-	// otherwise emit a single gtin-typed PID from the GTIN convenience field.
-	if len(p.PIDs) > 0 {
-		pids := make([]*bmecat2005.InternationalPID, 0, len(p.PIDs))
-		for _, pid := range p.PIDs {
-			if pid != nil {
-				pids = append(pids, &bmecat2005.InternationalPID{Type: pid.Type, Value: pid.Value})
-			}
+	// when it holds a non-nil entry so a read-modify-write preserves every typed
+	// identifier; otherwise emit a single gtin-typed PID from the GTIN
+	// convenience field.
+	for _, pid := range p.PIDs {
+		if pid != nil {
+			prod.Details.InternationalPIDs = append(prod.Details.InternationalPIDs, &bmecat2005.InternationalPID{Type: pid.Type, Value: pid.Value})
 		}
-		prod.Details.InternationalPIDs = pids
-	} else if p.GTIN != "" {
+	}
+	if len(prod.Details.InternationalPIDs) == 0 && p.GTIN != "" {
 		prod.Details.InternationalPIDs = []*bmecat2005.InternationalPID{{Type: "gtin", Value: p.GTIN}}
 	}
 	prod.Details.BuyerPIDs = make([]*bmecat2005.BuyerPID, 0, len(p.BuyerIDs))
 	for _, b := range p.BuyerIDs {
+		if b == nil {
+			continue
+		}
 		prod.Details.BuyerPIDs = append(prod.Details.BuyerPIDs, &bmecat2005.BuyerPID{Type: b.Type, Value: b.Value})
 	}
 	prod.Details.SpecialTreatmentClasses = make([]*bmecat2005.ProductSpecialTreatmentClass, 0, len(p.SpecialTreatmentClasses))
 	for _, s := range p.SpecialTreatmentClasses {
+		if s == nil {
+			continue
+		}
 		prod.Details.SpecialTreatmentClasses = append(prod.Details.SpecialTreatmentClasses, &bmecat2005.ProductSpecialTreatmentClass{Type: s.Type, Value: s.Value})
 	}
 	prod.Details.ProductStatus = make([]*bmecat2005.ProductStatus, 0, len(p.Status))
 	for _, s := range p.Status {
+		if s == nil {
+			continue
+		}
 		prod.Details.ProductStatus = append(prod.Details.ProductStatus, &bmecat2005.ProductStatus{Type: s.Type, Value: s.Value})
 	}
 	if od := neutralOrderDetailsToV2005(p); od != nil {
@@ -247,6 +254,9 @@ func neutralProductToV2005(p *Product) *bmecat2005.Product {
 	}
 	prod.Features = make([]*bmecat2005.ProductFeatures, 0, len(p.Features))
 	for _, f := range p.Features {
+		if f == nil {
+			continue
+		}
 		prod.Features = append(prod.Features, neutralFeaturesToV2005(f))
 	}
 	prod.PriceDetails = neutralPriceDetailsToV2005(p)
@@ -290,6 +300,9 @@ func neutralFeaturesToV2005(f *Features) *bmecat2005.ProductFeatures {
 	}
 	out.Features = make([]*bmecat2005.Feature, 0, len(f.Features))
 	for _, ft := range f.Features {
+		if ft == nil {
+			continue
+		}
 		out.Features = append(out.Features, &bmecat2005.Feature{
 			Name:   localizedToV2005(ft.Name),
 			Values: localizedToV2005(ft.Values),
@@ -300,23 +313,23 @@ func neutralFeaturesToV2005(f *Features) *bmecat2005.ProductFeatures {
 }
 
 // neutralPriceDetailsToV2005 builds the PRODUCT_PRICE_DETAILS wrappers for a
-// product. When the product carries PriceDetails it emits one wrapper per
-// entry, preserving validity dates and grouping; otherwise it falls back to the
+// product. When the product carries non-nil PriceDetails it emits one wrapper
+// per entry, preserving validity dates and grouping; otherwise it falls back to the
 // flattened Prices in a single wrapper, so callers that only set Prices keep
 // the previous behavior. It returns nil when the product has no prices at all.
 func neutralPriceDetailsToV2005(p *Product) []*bmecat2005.ProductPriceDetails {
-	if len(p.PriceDetails) > 0 {
-		out := make([]*bmecat2005.ProductPriceDetails, 0, len(p.PriceDetails))
-		for _, pd := range p.PriceDetails {
-			if pd == nil {
-				continue
-			}
-			out = append(out, &bmecat2005.ProductPriceDetails{
-				Dates:            validDatesToV2005(pd),
-				DailyPriceString: dailyPriceString(pd.IsDailyPrice),
-				Prices:           neutralPricesToV2005(pd.Prices),
-			})
+	var out []*bmecat2005.ProductPriceDetails
+	for _, pd := range p.PriceDetails {
+		if pd == nil {
+			continue
 		}
+		out = append(out, &bmecat2005.ProductPriceDetails{
+			Dates:            validDatesToV2005(pd),
+			DailyPriceString: dailyPriceString(pd.IsDailyPrice),
+			Prices:           neutralPricesToV2005(pd.Prices),
+		})
+	}
+	if len(out) > 0 {
 		return out
 	}
 	if prices := neutralPricesToV2005(p.Prices); prices != nil {
@@ -348,6 +361,9 @@ func neutralPricesToV2005(prices []*Price) []*bmecat2005.ProductPrice {
 	}
 	out := make([]*bmecat2005.ProductPrice, 0, len(prices))
 	for _, p := range prices {
+		if p == nil {
+			continue
+		}
 		out = append(out, &bmecat2005.ProductPrice{
 			Type:       p.Type,
 			Amount:     p.Amount,
@@ -358,16 +374,19 @@ func neutralPricesToV2005(prices []*Price) []*bmecat2005.ProductPrice {
 			Territory:  p.Territory,
 		})
 	}
+	if len(out) == 0 {
+		return nil
+	}
 	return out
 }
 
 func neutralMimesToV2005(mimes []*Mime) *bmecat2005.MimeInfo {
-	if len(mimes) == 0 {
-		return nil
-	}
-	mi := &bmecat2005.MimeInfo{Mimes: make([]*bmecat2005.Mime, 0, len(mimes))}
+	out := make([]*bmecat2005.Mime, 0, len(mimes))
 	for _, m := range mimes {
-		mi.Mimes = append(mi.Mimes, &bmecat2005.Mime{
+		if m == nil {
+			continue
+		}
+		out = append(out, &bmecat2005.Mime{
 			Type:    m.Type,
 			Source:  localizedToV2005(m.Source),
 			Descr:   localizedToV2005(m.Descr),
@@ -375,15 +394,21 @@ func neutralMimesToV2005(mimes []*Mime) *bmecat2005.MimeInfo {
 			Order:   m.Order,
 		})
 	}
-	return mi
+	if len(out) == 0 {
+		return nil
+	}
+	return &bmecat2005.MimeInfo{Mimes: out}
 }
 
 func neutralUDXToV2005(fields []*UDXField) *bmecat2005.UserDefinedExtensions {
-	if len(fields) == 0 {
-		return nil
-	}
-	udx := &bmecat2005.UserDefinedExtensions{}
+	var udx *bmecat2005.UserDefinedExtensions
 	for _, f := range fields {
+		if f == nil {
+			continue
+		}
+		if udx == nil {
+			udx = &bmecat2005.UserDefinedExtensions{}
+		}
 		udx.Fields.Add(f.Name, f.Value)
 	}
 	return udx

@@ -241,14 +241,23 @@ func neutralProductToV12(p *Product, lang string) *bmecat12.Article {
 	}
 	a.Details.BuyerAIDs = make([]*bmecat12.BuyerAID, 0, len(p.BuyerIDs))
 	for _, b := range p.BuyerIDs {
+		if b == nil {
+			continue
+		}
 		a.Details.BuyerAIDs = append(a.Details.BuyerAIDs, &bmecat12.BuyerAID{Type: b.Type, Value: b.Value})
 	}
 	a.Details.SpecialTreatmentClasses = make([]*bmecat12.ArticleSpecialTreatmentClass, 0, len(p.SpecialTreatmentClasses))
 	for _, s := range p.SpecialTreatmentClasses {
+		if s == nil {
+			continue
+		}
 		a.Details.SpecialTreatmentClasses = append(a.Details.SpecialTreatmentClasses, &bmecat12.ArticleSpecialTreatmentClass{Type: s.Type, Value: s.Value})
 	}
 	a.Details.ArticleStatus = make([]*bmecat12.ArticleStatus, 0, len(p.Status))
 	for _, s := range p.Status {
+		if s == nil {
+			continue
+		}
 		a.Details.ArticleStatus = append(a.Details.ArticleStatus, &bmecat12.ArticleStatus{Type: s.Type, Value: s.Value})
 	}
 	if od := neutralOrderDetailsToV12(p); od != nil {
@@ -256,6 +265,9 @@ func neutralProductToV12(p *Product, lang string) *bmecat12.Article {
 	}
 	a.Features = make([]*bmecat12.ArticleFeatures, 0, len(p.Features))
 	for _, f := range p.Features {
+		if f == nil {
+			continue
+		}
 		a.Features = append(a.Features, neutralFeaturesToV12(f, lang))
 	}
 	a.PriceDetails = neutralPriceDetailsToV12(p)
@@ -297,6 +309,9 @@ func neutralFeaturesToV12(f *Features, lang string) *bmecat12.ArticleFeatures {
 	}
 	out.Features = make([]*bmecat12.Feature, 0, len(f.Features))
 	for _, ft := range f.Features {
+		if ft == nil {
+			continue
+		}
 		out.Features = append(out.Features, &bmecat12.Feature{
 			Name:   mlToV12(ft.Name, lang),
 			Values: mlSliceToV12(ft.Values, lang),
@@ -307,23 +322,23 @@ func neutralFeaturesToV12(f *Features, lang string) *bmecat12.ArticleFeatures {
 }
 
 // neutralPriceDetailsToV12 builds the ARTICLE_PRICE_DETAILS wrappers for a
-// product. When the product carries PriceDetails it emits one wrapper per
-// entry, preserving validity dates and grouping; otherwise it falls back to the
+// product. When the product carries non-nil PriceDetails it emits one wrapper
+// per entry, preserving validity dates and grouping; otherwise it falls back to the
 // flattened Prices in a single wrapper, so callers that only set Prices keep
 // the previous behavior. It returns nil when the product has no prices at all.
 func neutralPriceDetailsToV12(p *Product) []*bmecat12.ArticlePriceDetails {
-	if len(p.PriceDetails) > 0 {
-		out := make([]*bmecat12.ArticlePriceDetails, 0, len(p.PriceDetails))
-		for _, pd := range p.PriceDetails {
-			if pd == nil {
-				continue
-			}
-			out = append(out, &bmecat12.ArticlePriceDetails{
-				Dates:            validDatesToV12(pd),
-				DailyPriceString: dailyPriceString(pd.IsDailyPrice),
-				Prices:           neutralPricesToV12(pd.Prices),
-			})
+	var out []*bmecat12.ArticlePriceDetails
+	for _, pd := range p.PriceDetails {
+		if pd == nil {
+			continue
 		}
+		out = append(out, &bmecat12.ArticlePriceDetails{
+			Dates:            validDatesToV12(pd),
+			DailyPriceString: dailyPriceString(pd.IsDailyPrice),
+			Prices:           neutralPricesToV12(pd.Prices),
+		})
+	}
+	if len(out) > 0 {
 		return out
 	}
 	if prices := neutralPricesToV12(p.Prices); prices != nil {
@@ -355,6 +370,9 @@ func neutralPricesToV12(prices []*Price) []*bmecat12.ArticlePrice {
 	}
 	out := make([]*bmecat12.ArticlePrice, 0, len(prices))
 	for _, p := range prices {
+		if p == nil {
+			continue
+		}
 		out = append(out, &bmecat12.ArticlePrice{
 			Type:       p.Type,
 			Amount:     p.Amount,
@@ -365,16 +383,19 @@ func neutralPricesToV12(prices []*Price) []*bmecat12.ArticlePrice {
 			Territory:  p.Territory,
 		})
 	}
+	if len(out) == 0 {
+		return nil
+	}
 	return out
 }
 
 func neutralMimesToV12(mimes []*Mime, lang string) *bmecat12.MimeInfo {
-	if len(mimes) == 0 {
-		return nil
-	}
-	mi := &bmecat12.MimeInfo{Mimes: make([]*bmecat12.Mime, 0, len(mimes))}
+	out := make([]*bmecat12.Mime, 0, len(mimes))
 	for _, m := range mimes {
-		mi.Mimes = append(mi.Mimes, &bmecat12.Mime{
+		if m == nil {
+			continue
+		}
+		out = append(out, &bmecat12.Mime{
 			Type:    m.Type,
 			Source:  mlToV12(m.Source, lang),
 			Descr:   mlToV12(m.Descr, lang),
@@ -382,15 +403,21 @@ func neutralMimesToV12(mimes []*Mime, lang string) *bmecat12.MimeInfo {
 			Order:   m.Order,
 		})
 	}
-	return mi
+	if len(out) == 0 {
+		return nil
+	}
+	return &bmecat12.MimeInfo{Mimes: out}
 }
 
 func neutralUDXToV12(fields []*UDXField) *bmecat12.UserDefinedExtensions {
-	if len(fields) == 0 {
-		return nil
-	}
-	udx := &bmecat12.UserDefinedExtensions{}
+	var udx *bmecat12.UserDefinedExtensions
 	for _, f := range fields {
+		if f == nil {
+			continue
+		}
+		if udx == nil {
+			udx = &bmecat12.UserDefinedExtensions{}
+		}
 		udx.Fields.Add(f.Name, f.Value)
 	}
 	return udx
