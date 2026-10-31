@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/olivere/bmecat"
 )
@@ -43,10 +44,10 @@ func (c *sliceCatalogWriter) Products(ctx context.Context) (<-chan *bmecat.Produ
 	return out, errc
 }
 
-// fullProduct is a neutral product with every common field populated, so a
+// fullProduct is a neutral product with every exported field populated, so a
 // write→read round-trip exercises the whole conversion and reflect.DeepEqual is
-// meaningful (no nil-vs-empty-slice ambiguity). QuantityMax is left zero because
-// BMEcat 1.2 has no QUANTITY_MAX; it is covered separately.
+// meaningful (no nil-vs-empty-slice ambiguity). TestFixturesSetEveryField keeps
+// it complete; roundTripLosses lists the fields a version cannot carry.
 func fullProduct() *bmecat.Product {
 	// price is shared between the flattened Prices view and the PriceDetails
 	// wrapper so a write→read round trip reproduces both: the reader rebuilds
@@ -60,9 +61,17 @@ func fullProduct() *bmecat.Product {
 		LowerBound: 1,
 		Territory:  []string{"DE"},
 	}
+	validStart := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	validEnd := time.Date(2020, 12, 31, 0, 0, 0, 0, time.UTC)
 	return &bmecat.Product{
-		ID:                      "1000",
-		GTIN:                    "1234567890123",
+		ID:   "1000",
+		Mode: "new",
+		GTIN: "1234567890123",
+		// The 2005 reader derives GTIN from the gtin-typed PID, so the two agree.
+		PIDs: []*bmecat.TypedValue{
+			{Type: "gtin", Value: "1234567890123"},
+			{Type: "supplier_specific", Value: "ACME-1000"},
+		},
 		DescriptionShort:        bmecat.Localized("Widget"),
 		DescriptionLong:         bmecat.Localized("A useful widget."),
 		SupplierAltID:           "ALT-1",
@@ -81,6 +90,7 @@ func fullProduct() *bmecat.Product {
 		Features: []*bmecat.Features{{
 			SystemName: "ECLASS-5.1",
 			GroupID:    "19010203",
+			GroupName:  bmecat.Localized("Power supplies"),
 			Features: []*bmecat.Feature{
 				{Name: bmecat.Localized("Voltage"), Values: bmecat.Localized("230"), Unit: "VLT"},
 			},
@@ -91,12 +101,19 @@ func fullProduct() *bmecat.Product {
 		PriceQuantity:    1,
 		QuantityMin:      1,
 		QuantityInterval: 1,
+		QuantityMax:      100,
 		Prices:           []*bmecat.Price{price},
-		PriceDetails:     []*bmecat.PriceDetails{{Prices: []*bmecat.Price{price}}},
+		PriceDetails: []*bmecat.PriceDetails{{
+			ValidStart:   &validStart,
+			ValidEnd:     &validEnd,
+			IsDailyPrice: true,
+			Prices:       []*bmecat.Price{price},
+		}},
 		Mimes: []*bmecat.Mime{{
 			Type: "image/jpeg", Source: bmecat.Localized("img.jpg"), Descr: bmecat.Localized("Image"), Purpose: "normal", Order: 1,
 		}},
-		UDX: []*bmecat.UDXField{{Name: "SYSTEM.CUSTOM_FIELD1", Value: "A"}},
+		UDX:             []*bmecat.UDXField{{Name: "SYSTEM.CUSTOM_FIELD1", Value: "A"}},
+		CatalogGroupIDs: []string{"G-1"},
 	}
 }
 
@@ -156,13 +173,8 @@ func TestWriteReadRoundTrip(t *testing.T) {
 			if len(c.products) != 1 {
 				t.Fatalf("want one product, have %d", len(c.products))
 			}
-			// PIDs is version-specific: 2005 reads GTIN back as a gtin-typed
-			// INTERNATIONAL_PID, 1.2 has no typed PID. Normalise before comparing
-			// the shared product; multi-PID round trips are covered by
-			// TestWritePIDs.
-			c.products[0].PIDs = nil
-			if !reflect.DeepEqual(product, c.products[0]) {
-				t.Errorf("product round trip mismatch:\nwant %+v\nhave %+v", product, c.products[0])
+			if want := withoutLosses(t, version, product); !reflect.DeepEqual(want, c.products[0]) {
+				t.Errorf("product round trip mismatch:\nwant %+v\nhave %+v", want, c.products[0])
 			}
 		})
 	}
@@ -386,13 +398,8 @@ func TestWriteFuncRoundTrip(t *testing.T) {
 			if len(c.products) != 1 {
 				t.Fatalf("want one product, have %d", len(c.products))
 			}
-			// PIDs is version-specific: 2005 reads GTIN back as a gtin-typed
-			// INTERNATIONAL_PID, 1.2 has no typed PID. Normalise before comparing
-			// the shared product; multi-PID round trips are covered by
-			// TestWritePIDs.
-			c.products[0].PIDs = nil
-			if !reflect.DeepEqual(product, c.products[0]) {
-				t.Errorf("product round trip mismatch:\nwant %+v\nhave %+v", product, c.products[0])
+			if want := withoutLosses(t, version, product); !reflect.DeepEqual(want, c.products[0]) {
+				t.Errorf("product round trip mismatch:\nwant %+v\nhave %+v", want, c.products[0])
 			}
 		})
 	}
