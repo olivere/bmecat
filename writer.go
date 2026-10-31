@@ -58,11 +58,13 @@ type Writer struct {
 	prevVersion    int
 	indent         string
 	classification *ClassificationSystem
+	progress       WriteProgress
 }
 
 // NewWriter creates a Writer over w. By default it emits BMEcat 1.2 with a
 // T_NEW_CATALOG transaction and two-space indentation; override with
-// WithVersion, WithTransaction, WithPreviousVersion and WithIndent.
+// WithVersion, WithTransaction, WithPreviousVersion, WithIndent,
+// WithClassificationSystem and WithProgress.
 func NewWriter(w io.Writer, options ...WriterOption) *Writer {
 	writer := &Writer{
 		w:           w,
@@ -108,6 +110,19 @@ func WithPreviousVersion(v int) WriterOption {
 func WithIndent(indent string) WriterOption {
 	return func(w *Writer) {
 		w.indent = indent
+	}
+}
+
+// WriteProgress is the signature of the progress callback while writing. It
+// receives the number of products written so far.
+type WriteProgress func(written int)
+
+// WithProgress sets a callback the writer invokes after each product it writes,
+// for Do and WriteFunc alike. It runs on the goroutine that called Do or
+// WriteFunc.
+func WithProgress(f WriteProgress) WriterOption {
+	return func(w *Writer) {
+		w.progress = f
 	}
 }
 
@@ -211,7 +226,11 @@ func (w *Writer) writeV12(ctx context.Context, cw CatalogWriter) error {
 		neutral:        cw,
 		classification: w.classification,
 	}
-	return bmecat12.NewWriter(w.w, bmecat12.WithIndent(w.indent)).Do(ctx, adapter)
+	opts := []bmecat12.WriterOption{bmecat12.WithIndent(w.indent)}
+	if w.progress != nil {
+		opts = append(opts, bmecat12.WithProgress(bmecat12.WriteProgress(w.progress)))
+	}
+	return bmecat12.NewWriter(w.w, opts...).Do(ctx, adapter)
 }
 
 func (w *Writer) writeV2005(ctx context.Context, cw CatalogWriter) error {
@@ -221,7 +240,11 @@ func (w *Writer) writeV2005(ctx context.Context, cw CatalogWriter) error {
 		neutral:        cw,
 		classification: w.classification,
 	}
-	return bmecat2005.NewWriter(w.w, bmecat2005.WithIndent(w.indent)).Do(ctx, adapter)
+	opts := []bmecat2005.WriterOption{bmecat2005.WithIndent(w.indent)}
+	if w.progress != nil {
+		opts = append(opts, bmecat2005.WithProgress(bmecat2005.WriteProgress(w.progress)))
+	}
+	return bmecat2005.NewWriter(w.w, opts...).Do(ctx, adapter)
 }
 
 // dailyPriceString renders a neutral PriceDetails.IsDailyPrice flag onto the

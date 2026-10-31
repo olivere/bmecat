@@ -118,7 +118,8 @@ The document-level transaction defaults to T_NEW_CATALOG; [WithTransaction]
 selects an update transaction instead. Data that is bounded and known up front
 is given as configuration rather than streamed: [WithClassificationSystem] emits
 a CLASSIFICATION_SYSTEM (such as an eCl@ss tree) before the products of a new
-catalog. The writer does not emit CATALOG_GROUP_SYSTEM or the product-to-group
+catalog. [WithProgress] reports the number of products written so far after
+each one. The writer does not emit CATALOG_GROUP_SYSTEM or the product-to-group
 maps yet, so [Product.CatalogGroupIDs] is read but not written.
 
 Callers that need raw, version-specific fidelity (including 2005-only fields
