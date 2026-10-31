@@ -67,16 +67,13 @@ type Writer struct {
 
 	// indent setting for the writer.
 	indent string
-	// Transaction specifies the mode of the catalog, e.g. "T_NEW_CATALOG" (default),
-	// "T_UPDATE_PRODUCTS", or "T_UPDATE_PRICES".
-	transaction Transaction
 }
 
 // NewWriter creates a new Writer. It expects an underlying io.Writer
 // which essentially gets the XML content. You can also pass additional
 // options like WithProgress.
 func NewWriter(w io.Writer, options ...WriterOption) *Writer {
-	writer := &Writer{w: w, indent: "  ", transaction: NewCatalog}
+	writer := &Writer{w: w, indent: "  "}
 	for _, o := range options {
 		o(writer)
 	}

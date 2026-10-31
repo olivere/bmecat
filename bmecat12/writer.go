@@ -49,16 +49,13 @@ type Writer struct {
 
 	// indent setting for the writer.
 	indent string
-	// Transaction specifies the mode of the catalog, e.g. "T_NEW_CATALOG" (default),
-	// "T_UPDATE_PRODUCTS", or "T_UPDATE_PRICES".
-	transaction Transaction
 }
 
 // NewWriter creates a new Writer. It expects an underlying io.Writer
 // which essentially gets the XML content. You can also pass additional
 // options like WithProgress.
 func NewWriter(w io.Writer, options ...WriterOption) *Writer {
-	writer := &Writer{w: w, indent: "  ", transaction: NewCatalog}
+	writer := &Writer{w: w, indent: "  "}
 	for _, o := range options {
 		o(writer)
 	}
@@ -121,9 +118,9 @@ func (w *Writer) txEndElement(writer CatalogWriter) xml.EndElement {
 //
 // You must pass a context, which can be canceled to stop writing.
 //
-// You must also pass a channel of articles, which Do loops over.
-// If the articles channel is closed, Do will write the rest of
-// the BMEcat file, and then return.
+// The articles to write are streamed from the CatalogWriter's Articles
+// method; once that channel is closed, Do writes the rest of the BMEcat
+// file and returns.
 func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 	w.enc = xml.NewEncoder(w.w)
 	if w.indent != "" {
@@ -164,7 +161,7 @@ func (w *Writer) Do(ctx context.Context, writer CatalogWriter) error {
 	}
 
 	if writer.Transaction() != UpdatePrices {
-		// ARTICLE_TO_CATALOGROUP_MAP
+		// ARTICLE_TO_CATALOGGROUP_MAP
 	}
 
 	if err := w.enc.EncodeToken(w.txEndElement(writer)); err != nil {
@@ -185,7 +182,7 @@ func (w *Writer) writeLeadIn(writer CatalogWriter) error {
 	if err != nil {
 		return err
 	}
-	// <BMECAT version="1.2" xmlns="http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog">`, writer.Language())
+	// <BMECAT version="1.2" xmlns="http://www.bmecat.org/bmecat/1.2/bmecat_new_catalog">
 	attr := []xml.Attr{
 		{Name: xml.Name{Local: "xmlns"}, Value: w.xmlNamespace(writer)},
 		{Name: xml.Name{Local: "version"}, Value: "1.2"},

@@ -129,7 +129,7 @@ type Product struct {
 	Mode string
 	// GTIN is the global trade item number: EAN (1.2) or the gtin/ean-typed
 	// INTERNATIONAL_PID (2005), falling back to the first PID or legacy EAN.
-	// See GTIN handling in the package docs.
+	// See PIDs for every typed identifier of a 2005 product.
 	GTIN string
 	// PIDs holds every INTERNATIONAL_PID (2005) with its type attribute, in
 	// document order. It is populated only for BMEcat 2005; 1.2 has a single,
